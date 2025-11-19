@@ -1,0 +1,640 @@
+/* KaTeX styles for math rendering */
+@import 'katex/dist/katex.min.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 29% 97%;  /* #f7f9fb - Light mode main chat background */
+    --foreground: 210 11% 3%;  /* #080a0c - Darker text for light mode */
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+    --primary: 219 67% 48%;  /* Same blue as dark mode */
+    --primary-foreground: 0 0% 98%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 210 11% 3%;  /* #080a0c - Darker text for light mode sidebar */
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 219 67% 48%;  /* Same blue as dark mode */
+    --radius: 0.5rem;
+
+    /* Custom sidebar colors for light mode */
+    --sidebar-bg: 237 12% 87%;  /* #dbdbe6 */
+    --sidebar-secondary: 199 24% 92%;  /* #e7eef1 - Sidebar secondary background */
+    --sidebar-text: 210 11% 3%;  /* Same as muted-foreground for light mode */
+
+    /* Custom message background for light mode */
+    --message-user: 195 14% 91%;  /* #e3e9eb - User message background */
+
+    /* Custom chat input box color for light mode */
+    --chat-input: 0 0% 98%;  /* #fbfbfb - Chat input box background */
+  }
+
+  .dark {
+    --background: 225 12% 13%;  /* #1e2027 - Dark mode main chat background */
+    --foreground: 210 40% 98%;
+    --card: 222 15% 15%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222 15% 15%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 219 67% 48%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 222 15% 20%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 222 15% 20%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 222 15% 20%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 222 15% 25%;
+    --input: 222 15% 25%;
+    --ring: 219 67% 48%;
+
+    /* Custom sidebar colors for dark mode */
+    --sidebar-bg: 225 13% 8%;  /* #131419 */
+    --sidebar-secondary: 225 9% 11%;  /* #1b1d24 */
+    --sidebar-text: 210 28% 82%;  /* #c6d0dc - Lighter text for sidebar items */
+
+    /* Custom message background for dark mode */
+    --message-user: 225 7% 7%;  /* #111213 - User message background */
+
+    /* Custom chat input box color for dark mode */
+    --chat-input: 225 9% 11%;  /* #1b1d24 - Chat input box background */
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Markdown content styling */
+@layer components {
+  .prose-sm {
+    @apply text-foreground;
+  }
+
+  .prose-sm :where(h1):not(:where([class~="not-prose"], [class~="not-prose"] *)) {
+    @apply text-2xl font-bold mb-4 mt-6 text-foreground;
+  }
+
+  .prose-sm :where(h2):not(:where([class~="not-prose"], [class~="not-prose"] *)) {
+    @apply text-xl font-bold mb-3 mt-5 text-foreground;
+  }
+
+  .prose-sm :where(h3):not(:where([class~="not-prose"], [class~="not-prose"] *)) {
+    @apply text-lg font-bold mb-2 mt-4 text-foreground;
+  }
+
+  .prose-sm :where(p):not(:where([class~="not-prose"], [class~="not-prose"] *)) {
+    @apply mb-4 text-foreground leading-relaxed;
+  }
+
+  .prose-sm :where(ul, ol):not(:where([class~="not-prose"], [class~="not-prose"] *)) {
+    @apply mb-4 ml-6 text-foreground;
+  }
+
+  .prose-sm :where(li):not(:where([class~="not-prose"], [class~="not-prose"] *)) {
+    @apply mb-1 text-foreground;
+  }
+
+  .prose-sm :where(code):not(:where([class~="not-prose"], [class~="not-prose"] *)) {
+    @apply bg-muted px-1.5 py-0.5 rounded text-sm font-mono;
+  }
+
+  .prose-sm :where(pre):not(:where([class~="not-prose"], [class~="not-prose"] *)) {
+    @apply bg-muted p-4 rounded-lg overflow-x-auto mb-4;
+  }
+
+  .prose-sm :where(pre code):not(:where([class~="not-prose"], [class~="not-prose"] *)) {
+    @apply bg-transparent p-0;
+  }
+
+  .prose-sm :where(table):not(:where([class~="not-prose"], [class~="not-prose"] *)) {
+    @apply w-full border-collapse mb-4;
+  }
+
+  .prose-sm :where(th):not(:where([class~="not-prose"], [class~="not-prose"] *)) {
+    @apply border border-border bg-muted px-4 py-2 text-left font-semibold;
+  }
+
+  .prose-sm :where(td):not(:where([class~="not-prose"], [class~="not-prose"] *)) {
+    @apply border border-border px-4 py-2;
+  }
+
+  .prose-sm :where(blockquote):not(:where([class~="not-prose"], [class~="not-prose"] *)) {
+    @apply border-l-4 border-primary pl-4 italic my-4;
+  }
+
+  .prose-sm :where(strong):not(:where([class~="not-prose"], [class~="not-prose"] *)) {
+    @apply font-bold;
+  }
+
+  .prose-sm :where(em):not(:where([class~="not-prose"], [class~="not-prose"] *)) {
+    @apply italic;
+  }
+
+  .prose-sm :where(a):not(:where([class~="not-prose"], [class~="not-prose"] *)) {
+    @apply text-primary underline hover:opacity-80;
+  }
+}
+
+/* Shimmer animation for skeleton loading */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite;
+}
+
+/* Wave animation for search indicator */
+@keyframes wave {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+.animate-wave {
+  animation: wave 1.5s ease-in-out infinite;
+}
+
+/* Dots animation for search indicator */
+@keyframes dots {
+  0%, 20% {
+    content: '.';
+  }
+  40%, 60% {
+    content: '..';
+  }
+  80%, 100% {
+    content: '...';
+  }
+}
+
+.animate-dots::after {
+  content: '.';
+  animation: dots 1.5s ease-in-out infinite;
+}
+
+/* Ripple animation for loading indicator */
+@keyframes ripple {
+  0% {
+    transform: scale(0.8);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(2.5);
+    opacity: 0;
+  }
+}
+
+@keyframes ripple-slow {
+  0% {
+    transform: scale(0.8);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(2.5);
+    opacity: 0;
+  }
+}
+
+@keyframes ripple-fast {
+  0% {
+    transform: scale(0.8);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(2.5);
+    opacity: 0;
+  }
+}
+
+.animate-ripple {
+  animation: ripple 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-ripple-slow {
+  animation: ripple-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-ripple-fast {
+  animation: ripple-fast 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Blob animation - organic, asymmetric morphing */
+@keyframes blob-morph {
+  0%, 100% {
+    border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+    transform: scale(1) rotate(0deg);
+  }
+  25% {
+    border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%;
+    transform: scale(1.1) rotate(5deg);
+  }
+  50% {
+    border-radius: 50% 60% 30% 60% / 30% 60% 70% 40%;
+    transform: scale(0.9) rotate(-5deg);
+  }
+  75% {
+    border-radius: 60% 40% 60% 40% / 70% 30% 50% 60%;
+    transform: scale(1.05) rotate(3deg);
+  }
+}
+
+@keyframes blob-expand {
+  0% {
+    transform: scale(0.7);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+
+@keyframes blob-expand-slow {
+  0% {
+    transform: scale(0.7);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+
+@keyframes blob-expand-fast {
+  0% {
+    transform: scale(0.7);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+
+/* Individual blob ring animations with unique morph patterns */
+@keyframes blob-ring-1 {
+  0% {
+    border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+    transform: scale(0.7) rotate(0deg);
+    opacity: 0.8;
+  }
+  100% {
+    border-radius: 40% 60% 50% 60% / 70% 40% 60% 50%;
+    transform: scale(2.2) rotate(15deg);
+    opacity: 0;
+  }
+}
+
+@keyframes blob-ring-2 {
+  0% {
+    border-radius: 50% 60% 30% 60% / 30% 60% 70% 40%;
+    transform: scale(0.7) rotate(0deg);
+    opacity: 0.8;
+  }
+  100% {
+    border-radius: 60% 40% 70% 50% / 50% 70% 40% 60%;
+    transform: scale(2.2) rotate(-20deg);
+    opacity: 0;
+  }
+}
+
+@keyframes blob-ring-3 {
+  0% {
+    border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%;
+    transform: scale(0.7) rotate(0deg);
+    opacity: 0.8;
+  }
+  100% {
+    border-radius: 70% 30% 40% 60% / 60% 50% 70% 30%;
+    transform: scale(2.2) rotate(10deg);
+    opacity: 0;
+  }
+}
+
+@keyframes blob-ring-4 {
+  0% {
+    border-radius: 70% 30% 50% 50% / 40% 70% 50% 60%;
+    transform: scale(0.7) rotate(0deg);
+    opacity: 0.8;
+  }
+  100% {
+    border-radius: 50% 50% 60% 40% / 70% 30% 60% 40%;
+    transform: scale(2.2) rotate(-15deg);
+    opacity: 0;
+  }
+}
+
+.animate-blob-morph {
+  animation: blob-morph 4s ease-in-out infinite;
+}
+
+.animate-blob-expand {
+  animation: blob-expand 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-blob-expand-slow {
+  animation: blob-expand-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-blob-expand-fast {
+  animation: blob-expand-fast 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-blob-ring-1 {
+  animation: blob-ring-1 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-blob-ring-2 {
+  animation: blob-ring-2 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-blob-ring-3 {
+  animation: blob-ring-3 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-blob-ring-4 {
+  animation: blob-ring-4 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-blob-ring-1-slow {
+  animation: blob-ring-1 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-blob-ring-2-slow {
+  animation: blob-ring-2 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-blob-ring-3-slow {
+  animation: blob-ring-3 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-blob-ring-4-slow {
+  animation: blob-ring-4 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-blob-ring-1-fast {
+  animation: blob-ring-1 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-blob-ring-2-fast {
+  animation: blob-ring-2 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-blob-ring-3-fast {
+  animation: blob-ring-3 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-blob-ring-4-fast {
+  animation: blob-ring-4 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Breathing Circle - concentric rings that breathe at different rates */
+@keyframes breathe-ring-1 {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.3);
+    opacity: 0.6;
+  }
+}
+
+@keyframes breathe-ring-2 {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.4);
+    opacity: 0.4;
+  }
+}
+
+@keyframes breathe-ring-3 {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scale(1.5);
+    opacity: 0.2;
+  }
+}
+
+.animate-breathe-1 {
+  animation: breathe-ring-1 2s ease-in-out infinite;
+}
+
+.animate-breathe-2 {
+  animation: breathe-ring-2 2s ease-in-out infinite;
+}
+
+.animate-breathe-3 {
+  animation: breathe-ring-3 2s ease-in-out infinite;
+}
+
+.animate-breathe-1-slow {
+  animation: breathe-ring-1 3s ease-in-out infinite;
+}
+
+.animate-breathe-2-slow {
+  animation: breathe-ring-2 3s ease-in-out infinite;
+}
+
+.animate-breathe-3-slow {
+  animation: breathe-ring-3 3s ease-in-out infinite;
+}
+
+.animate-breathe-1-fast {
+  animation: breathe-ring-1 1.5s ease-in-out infinite;
+}
+
+.animate-breathe-2-fast {
+  animation: breathe-ring-2 1.5s ease-in-out infinite;
+}
+
+.animate-breathe-3-fast {
+  animation: breathe-ring-3 1.5s ease-in-out infinite;
+}
+
+/* Morphing Hexagon - geometric shape transitions */
+@keyframes morph-hexagon {
+  0%, 100% {
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+    transform: rotate(0deg) scale(1);
+  }
+  25% {
+    clip-path: polygon(50% 0%, 95% 30%, 95% 70%, 50% 100%, 5% 70%, 5% 30%);
+    transform: rotate(90deg) scale(1.1);
+  }
+  50% {
+    clip-path: polygon(50% 0%, 90% 35%, 90% 65%, 50% 100%, 10% 65%, 10% 35%);
+    transform: rotate(180deg) scale(0.9);
+  }
+  75% {
+    clip-path: polygon(50% 0%, 95% 30%, 95% 70%, 50% 100%, 5% 70%, 5% 30%);
+    transform: rotate(270deg) scale(1.05);
+  }
+}
+
+.animate-morph-hexagon {
+  animation: morph-hexagon 3s ease-in-out infinite;
+}
+
+.animate-morph-hexagon-slow {
+  animation: morph-hexagon 4s ease-in-out infinite;
+}
+
+.animate-morph-hexagon-fast {
+  animation: morph-hexagon 2s ease-in-out infinite;
+}
+
+/* 3D Cube - rotating cube with shaded sides */
+@keyframes cube-rotate {
+  0% {
+    transform: rotateX(0deg) rotateY(0deg);
+  }
+  25% {
+    transform: rotateX(180deg) rotateY(90deg);
+  }
+  50% {
+    transform: rotateX(180deg) rotateY(180deg);
+  }
+  75% {
+    transform: rotateX(360deg) rotateY(270deg);
+  }
+  100% {
+    transform: rotateX(360deg) rotateY(360deg);
+  }
+}
+
+.animate-cube-rotate {
+  animation: cube-rotate 3s ease-in-out infinite;
+  transform-style: preserve-3d;
+}
+
+.animate-cube-rotate-slow {
+  animation: cube-rotate 4s ease-in-out infinite;
+  transform-style: preserve-3d;
+}
+
+.animate-cube-rotate-fast {
+  animation: cube-rotate 2s ease-in-out infinite;
+  transform-style: preserve-3d;
+}
+
+/* Pulsing Star - multi-pointed star expansion */
+@keyframes star-pulse {
+  0%, 100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.3) rotate(180deg);
+    opacity: 0.7;
+  }
+}
+
+@keyframes star-pulse-ring {
+  0% {
+    transform: scale(0.8) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(2) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+.animate-star-pulse {
+  animation: star-pulse 2s ease-in-out infinite;
+}
+
+.animate-star-pulse-slow {
+  animation: star-pulse 3s ease-in-out infinite;
+}
+
+.animate-star-pulse-fast {
+  animation: star-pulse 1.5s ease-in-out infinite;
+}
+
+.animate-star-ring {
+  animation: star-pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-star-ring-slow {
+  animation: star-pulse-ring 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-star-ring-fast {
+  animation: star-pulse-ring 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Rotating Flower - petal shapes that bloom */
+@keyframes flower-bloom {
+  0%, 100% {
+    clip-path: polygon(
+      50% 50%,
+      50% 20%, 60% 25%, 65% 35%,
+      75% 40%, 80% 50%, 75% 60%,
+      65% 65%, 60% 75%, 50% 80%,
+      40% 75%, 35% 65%, 25% 60%,
+      20% 50%, 25% 40%, 35% 35%,
+      40% 25%
+    );
+    transform: rotate(0deg) scale(1);
+  }
+  50% {
+    clip-path: polygon(
+      50% 50%,
+      50% 10%, 65% 20%, 75% 30%,
+      85% 35%, 90% 50%, 85% 65%,
+      75% 70%, 65% 80%, 50% 90%,
+      35% 80%, 25% 70%, 15% 65%,
+      10% 50%, 15% 35%, 25% 30%,
+      35% 20%
+    );
+    transform: rotate(180deg) scale(1.2);
+  }
+}
+
+.animate-flower-bloom {
+  animation: flower-bloom 3s ease-in-out infinite;
+}
+
+.animate-flower-bloom-slow {
+  animation: flower-bloom 4s ease-in-out infinite;
+}
+
+.animate-flower-bloom-fast {
+  animation: flower-bloom 2s ease-in-out infinite;
+}

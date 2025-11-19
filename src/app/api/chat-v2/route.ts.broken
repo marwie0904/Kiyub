@@ -1,0 +1,577 @@
+import { streamText, convertToModelMessages } from "ai";
+import { createCerebras } from "@ai-sdk/cerebras";
+import { createDeepInfra } from "@ai-sdk/deepinfra";
+import { ConvexHttpClient } from "convex/browser";
+import { api } from "../../../../convex/_generated/api";
+import { Id } from "../../../../convex/_generated/dataModel";
+import { webSearchTool } from "@/lib/tools/web-search";
+import { trackLLMCallServer, calculateLLMCost } from "@/lib/analytics/llm-tracking";
+import { usdToPhp } from "@/lib/currency";
+import { getProviderForModel } from "@/lib/provider-helper";
+
+// Allow streaming responses up to 30 seconds
+export const maxDuration = 30;
+
+const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+
+// Helper function to convert UIMessages to CoreMessages
+function convertMessages(messages: any[]) {
+  return messages.map((msg: any) => {
+    // If message has parts (UIMessage format), extract text content
+    if (msg.parts) {
+      const textContent = msg.parts
+        .filter((part: any) => part.type === "text" && part.text)
+        .map((part: any) => part.text)
+        .join("");
+
+      return {
+        role: msg.role,
+        content: textContent,
+      };
+    }
+
+    // Already in CoreMessage format
+    return {
+      role: msg.role,
+      content: msg.content,
+    };
+  });
+}
+
+export async function POST(req: Request) {
+  try {
+    const { messages, model, conversationId, attachments } = await req.json();
+
+    console.log("=== API Request ===");
+    console.log("Model:", model);
+    console.log("Conversation ID:", conversationId);
+    console.log("Attachments:", attachments);
+    console.log("Messages before conversion:", JSON.stringify(messages, null, 2));
+
+    // Convert UIMessages to CoreMessages
+    // For initial messages, use custom converter
+    // For follow-up messages with tool calls, convertToModelMessages handles them
+    let coreMessages;
+    try {
+      // Try AI SDK converter first (handles tool calls properly)
+      coreMessages = convertToModelMessages(messages, {
+        tools: { webSearch: webSearchTool },
+      });
+    } catch (error) {
+      // Fall back to custom converter for initial messages
+      console.log("Using custom message converter");
+      coreMessages = convertMessages(messages);
+    }
+
+    console.log("Messages after conversion:", JSON.stringify(coreMessages, null, 2));
+
+    // Process file attachments with Gemini if present
+    if (attachments && attachments.length > 0) {
+      console.log("Processing file attachments with Gemini...");
+
+      try {
+        // Get file URLs from Convex storage
+        const fileUrls: string[] = [];
+        const fileTypes: string[] = [];
+
+        for (const attachment of attachments) {
+          const url = await convex.query(api.messageFiles.getUrl, {
+            storageId: attachment.storageId,
+          });
+          if (url) {
+            fileUrls.push(url);
+            fileTypes.push(attachment.fileType);
+          }
+        }
+
+        // Get the user's original message
+        const lastMessage = coreMessages[coreMessages.length - 1];
+        const userPrompt = lastMessage.content as string;
+
+        // Extract context from files using Gemini
+        const geminiStartTime = Date.now();
+        const geminiResult = await convex.action(api.gemini.extractFileContext, {
+          fileUrls,
+          fileTypes,
+          userPrompt,
+        });
+
+        const geminiContext = geminiResult.context;
+        const geminiUsage = geminiResult.usage;
+
+        console.log("Gemini context extracted successfully");
+        console.log("Gemini usage:", geminiUsage);
+
+        // Track Gemini usage
+        if (geminiUsage) {
+          const geminiLatencyMs = Date.now() - geminiStartTime;
+          const geminiCostUsd = calculateLLMCost(
+            "google/gemini-2.5-flash-lite",
+            geminiUsage.inputTokens,
+            geminiUsage.outputTokens
+          );
+
+          await convex.mutation(api.aiTracking.track, {
+            inputTokens: geminiUsage.inputTokens,
+            outputTokens: geminiUsage.outputTokens,
+            totalTokens: geminiUsage.totalTokens,
+            model: "google/gemini-2.5-flash-lite",
+            provider: "google",
+            usageType: "file_analysis",
+            costUsd: geminiCostUsd,
+            costPhp: usdToPhp(geminiCostUsd),
+            conversationId: conversationId as Id<"conversations">,
+            latencyMs: geminiLatencyMs,
+            success: true,
+          });
+
+          console.log("✅ Gemini usage tracked:", {
+            inputTokens: geminiUsage.inputTokens,
+            outputTokens: geminiUsage.outputTokens,
+            totalTokens: geminiUsage.totalTokens,
+            costUsd: geminiCostUsd,
+            costPhp: usdToPhp(geminiCostUsd),
+          });
+        }
+
+        // Combine user message with Gemini context
+        const combinedMessage = `${userPrompt}\n\n[File Context]\n${geminiContext}`;
+
+        // Update the last message with combined content
+        coreMessages = [
+          ...coreMessages.slice(0, -1),
+          {
+            role: lastMessage.role,
+            content: combinedMessage,
+          },
+        ];
+
+        console.log("Combined message created with file context");
+      } catch (error) {
+        console.error("Failed to process file attachments:", error);
+        // Continue without file context if Gemini processing fails
+      }
+    }
+
+    // Default to Cerebras GPT-OSS 120b (FREIRE FAST)
+    const defaultModel = "cerebras/gpt-oss-120b";
+
+    // Get provider type for model
+    const getProviderType = (modelName: string): "cerebras" | "deepinfra" | "disabled" => {
+      if (modelName === "openai/gpt-oss-20b") return "deepinfra"; // FREIRE LITE
+      if (modelName === "cerebras/gpt-oss-120b") return "cerebras"; // FREIRE FAST
+      if (modelName === "openai/gpt-oss-120b") return "disabled"; // FREIRE (original) - disabled
+      return "cerebras"; // Default to Cerebras
+    };
+
+    const providerType = getProviderType(model || defaultModel);
+
+    // Block disabled models
+    if (providerType === "disabled") {
+      return new Response(
+        JSON.stringify({
+          error: "This model is currently unavailable",
+          details: "Please select FREIRE LITE or FREIRE FAST",
+        }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    // Initialize providers
+    const cerebras = createCerebras({
+      apiKey: process.env.CEREBRAS_API_KEY,
+    });
+
+    const deepinfra = createDeepInfra({
+      apiKey: process.env.DEEPINFRA_API_KEY,
+    });
+
+    // Get the last user message for saving
+    const lastUserMessage = messages[messages.length - 1];
+    const userMessageContent =
+      typeof lastUserMessage.content === "string"
+        ? lastUserMessage.content
+        : lastUserMessage.content;
+
+    // Use TransformStream for streaming
+    const { readable, writable } = new TransformStream();
+    const writer = writable.getWriter();
+    const encoder = new TextEncoder();
+
+    // Start async streaming operations in background
+    (async () => {
+      try {
+        console.log("🚀 [AI SDK] Using streamText with tool calling");
+
+        // System message with search limits
+        const systemMessages = [{
+          role: "system" as const,
+          content: `You are a helpful AI assistant with access to web search capabilities.
+
+CRITICAL WORKFLOW:
+1. If you need current information, call the webSearch tool FIRST
+2. AFTER the tool returns results, you MUST generate a comprehensive text response
+3. DO NOT stop after calling a tool - ALWAYS provide a text answer after receiving tool results
+
+Tool Usage Rules:
+- Maximum 1-2 web searches per question
+- Use webSearch when you need up-to-date information
+- Tool parameters: query (string), numResults (number, optional, default: 5)
+
+Response Format:
+- After receiving search results, synthesize a detailed answer
+- Cite sources naturally (e.g., "According to [source]...")
+- ALWAYS provide natural language text, never just JSON or tool calls
+
+IMPORTANT: After any tool call, you MUST continue with a text response. Do not stop after the tool returns results.`
+        }];
+
+        // Combine system messages with user messages
+        const finalMessages = [...systemMessages, ...coreMessages];
+
+        const startTime = Date.now();
+        const toolsUsed: string[] = [];
+        let searchMetadata: any = undefined;
+
+        // Select model based on provider
+        console.log("🔧 [Provider] Using provider:", providerType);
+        let selectedModel;
+        if (providerType === "deepinfra") {
+          // FREIRE LITE - DeepInfra GPT-OSS 20B
+          selectedModel = deepinfra("openai/gpt-oss-20b");
+          console.log("🔧 [Model] Using DeepInfra with openai/gpt-oss-20b + tools");
+        } else {
+          // FREIRE FAST - Cerebras GPT-OSS 120B (default)
+          selectedModel = cerebras("gpt-oss-120b");
+          console.log("🔧 [Model] Using Cerebras with gpt-oss-120b + tools");
+        }
+
+        // Save user message BEFORE streaming to prevent UI reset
+        if (conversationId) {
+          console.log("💾 [AI SDK] Saving user message to Convex...");
+          await convex.mutation(api.messages.send, {
+            conversationId: conversationId as Id<"conversations">,
+            content: userMessageContent,
+            role: "user",
+            attachments: attachments || undefined,
+          });
+          console.log("✅ [AI SDK] User message saved");
+        }
+
+        // Use manual loop for tool calling (like reference implementation)
+        // AI SDK's maxSteps doesn't work properly - it stops after tool call
+        const conversationMessages: any[] = [...finalMessages];
+        let iteration = 0;
+        const maxIterations = 5;
+        let finalResponse = '';
+        let finalUsageData: any = null;
+
+        while (iteration < maxIterations) {
+          iteration++;
+          console.log(`🔄 [Iteration ${iteration}/${maxIterations}]`);
+
+          // Non-streaming request for each iteration
+          const { text, usage, toolCalls: currentToolCalls, toolResults: currentToolResults, response } = await streamText({
+            model: selectedModel,
+            messages: conversationMessages,
+            tools: {
+              webSearch: webSearchTool,
+            },
+            temperature: 0.7,
+          });
+
+          // Wait for completion
+          const fullText = await text;
+          finalUsageData = usage;
+
+          console.log("🎯 [Iteration Result] Text length:", fullText?.length || 0);
+          console.log("🎯 [Iteration Result] Tool calls:", (await currentToolCalls)?.length || 0);
+
+          // Check if there are tool calls
+          const toolCallsArray = await currentToolCalls;
+          if (toolCallsArray && toolCallsArray.length > 0) {
+            console.log("🔧 [Tool Calls] Detected:", toolCallsArray.length);
+            toolsUsed.push("webSearch");
+
+            // Add assistant message with tool call to conversation
+            conversationMessages.push({
+              role: 'assistant',
+              content: fullText || '',
+              tool_calls: toolCallsArray.map((tc: any) => ({
+                id: tc.toolCallId,
+                type: 'function',
+                function: {
+                  name: tc.toolName,
+                  arguments: JSON.stringify(tc.args)
+                }
+              }))
+            });
+
+            // Add tool results to conversation
+            const toolResultsArray = await currentToolResults;
+            if (toolResultsArray && toolResultsArray.length > 0) {
+              for (const result of toolResultsArray) {
+                conversationMessages.push({
+                  role: 'tool',
+                  tool_call_id: result.toolCallId,
+                  content: typeof result.result === 'string' ? result.result : JSON.stringify(result.result)
+                });
+
+                // Extract search metadata
+                try {
+                  const parsedResult = typeof result.result === 'string'
+                    ? JSON.parse(result.result)
+                    : result.result;
+                  if (parsedResult.sources) {
+                    searchMetadata = {
+                      query: parsedResult.query,
+                      sources: parsedResult.sources,
+                    };
+                  }
+                } catch (e) {
+                  // Ignore parsing errors
+                }
+              }
+            }
+
+            // Continue to next iteration
+            continue;
+          }
+
+          // No tool calls - we have the final answer
+          if (fullText && fullText.trim().length > 0) {
+            console.log("✅ [Final Response] Received");
+            finalResponse = fullText;
+            break;
+          }
+
+          // Model stopped without response
+          console.warn("⚠️ [Warning] Model stopped without content");
+          break;
+        }
+
+        if (!finalResponse || finalResponse.trim().length === 0) {
+          throw new Error('No response generated after tool calling');
+        }
+
+        console.log("🎯 [Final] Text length:", finalResponse.length);
+
+        // Now stream the final response to client
+        const words = finalResponse.split(' ');
+        for (let i = 0; i < words.length; i++) {
+          const chunk = words[i] + (i < words.length - 1 ? ' ' : '');
+          await writer.write(encoder.encode(`0:${JSON.stringify(chunk)}\n`));
+        }
+
+        // Handle onFinish logic
+        {
+          const text = finalResponse;
+          const usage = finalUsageData;
+
+          {
+            // Track tool usage (already tracked above)
+            if (toolsUsed.length > 0) {
+              console.log("✅ [AI SDK] Tool calls executed:", toolsUsed.length);
+
+              // Extract search metadata from tool results
+              if (toolResults && toolResults.length > 0) {
+                for (const result of toolResults) {
+                  try {
+                    const parsedResult = JSON.parse(result.result as string);
+                    if (parsedResult.sources) {
+                      searchMetadata = {
+                        query: parsedResult.query,
+                        sources: parsedResult.sources,
+                      };
+                      console.log("✅ [AI SDK] Saved search metadata:", searchMetadata.sources.length, "sources");
+                    }
+                  } catch (e) {
+                    // Ignore parsing errors
+                  }
+                }
+              }
+            }
+            console.log("✅ Generation complete, saving to Convex...");
+
+            // Extract reasoning details (provider-specific)
+            const reasoningDetails = (experimental_providerMetadata as any)?.deepinfra?.reasoning_details
+              || (experimental_providerMetadata as any)?.cerebras?.reasoning_details
+              || [];
+
+            console.log("📊 [RAW] Provider metadata:", JSON.stringify(experimental_providerMetadata, null, 2));
+            console.log("📊 [RAW] AI SDK usage:", JSON.stringify(usage, null, 2));
+
+            if (conversationId && text) {
+              // Extract token data from usage
+              const usageData = usage as any;
+              const promptTokens = usageData?.promptTokens ?? 0;
+              const completionTokens = usageData?.completionTokens ?? 0;
+              const reasoningTokens = usageData?.reasoningTokens ?? 0;
+              const totalTokens = usageData?.totalTokens ?? (promptTokens + completionTokens);
+
+              console.log("💾 [EXTRACTED] Tokens to save:", {
+                inputTokens: promptTokens,
+                outputTokens: completionTokens,
+                reasoningTokens,
+                totalTokens
+              });
+
+              await convex.mutation(api.messages.create, {
+                conversationId: conversationId as Id<"conversations">,
+                content: text,
+                role: "assistant",
+                searchMetadata: searchMetadata || undefined,
+                tokenUsage: usage ? {
+                  promptTokens,
+                  completionTokens,
+                  totalTokens,
+                } : undefined,
+                reasoningDetails: reasoningDetails.length > 0 ? reasoningDetails : undefined,
+              });
+
+              const conversation = await convex.query(api.conversations.get, {
+                conversationId: conversationId as Id<"conversations">,
+              });
+
+              if (conversation && conversation.messageCount === 2) {
+                convex
+                  .action(api.openai.generateTitle, {
+                    conversationId: conversationId as Id<"conversations">,
+                  })
+                  .catch((err) => console.error("Title generation failed:", err));
+              }
+            }
+
+            if (usage) {
+              const usageData = usage as any;
+              const promptToks = usageData?.promptTokens ?? 0;
+              const completionToks = usageData?.completionTokens ?? 0;
+              const reasoningToks = usageData?.reasoningTokens ?? 0;
+              const totalToks = usageData?.totalTokens ?? (promptToks + completionToks);
+              const costUsd = calculateLLMCost(model || defaultModel, promptToks, completionToks);
+
+              // Track in PostHog
+              await trackLLMCallServer({
+                model: model || defaultModel,
+                provider: providerType,
+                promptTokens: promptToks,
+                completionTokens: completionToks,
+                totalTokens: totalToks,
+                cost: costUsd,
+                latencyMs: Date.now() - startTime,
+                conversationId: conversationId as string,
+                toolsUsed: toolsUsed.length > 0 ? toolsUsed : undefined,
+                success: true,
+              });
+
+              // Track in Convex aiTracking table
+              await convex.mutation(api.aiTracking.track, {
+                inputTokens: promptToks,
+                outputTokens: completionToks,
+                reasoningTokens: reasoningToks > 0 ? reasoningToks : undefined,
+                totalTokens: totalToks,
+                model: model || defaultModel,
+                provider: getProviderForModel(model || defaultModel),
+                usageType: "conversation",
+                costUsd,
+                costPhp: usdToPhp(costUsd),
+                conversationId: conversationId as Id<"conversations">,
+                latencyMs: Date.now() - startTime,
+                success: true,
+              });
+            }
+          },
+        });
+
+        const stream = result.fullStream;
+
+        // Stream all chunks as they arrive (including tool calls)
+        for await (const chunk of stream) {
+          // Log all chunk types for debugging
+          console.log("📦 [Stream Chunk]:", chunk.type);
+
+          if (chunk.type === "reasoning-delta") {
+            // Ignore reasoning chunks - don't stream them
+          } else if (chunk.type === "text-delta") {
+            // Stream text response chunks in AI SDK format
+            console.log("📝 [Text Chunk]:", chunk.text);
+            await writer.write(encoder.encode(`0:${JSON.stringify(chunk.text)}\n`));
+          } else if (chunk.type === "tool-call") {
+            // Log tool calls but don't stream them (handled internally)
+            console.log("🔧 [Tool Call]:", chunk.toolName);
+          } else if (chunk.type === "tool-result") {
+            // Log tool results but don't stream them
+            console.log("✅ [Tool Result]:", chunk.toolName);
+          }
+        }
+
+        console.log("🏁 [Stream Complete] Sending [DONE] marker");
+
+        // Send done marker and close stream
+        await writer.write(encoder.encode(`data: [DONE]\n\n`));
+        await writer.close();
+      } catch (error) {
+        console.error("❌ Stream error:", error);
+        await writer.abort(error);
+      }
+    })();
+
+    // Return the readable side of the TransformStream immediately
+    return new Response(readable, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+      },
+    });
+  } catch (error) {
+    console.error("Chat API Error:", error);
+
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+
+    // Track failed LLM call in PostHog
+    await trackLLMCallServer({
+      model: "unknown",
+      provider: "unknown",
+      promptTokens: 0,
+      completionTokens: 0,
+      totalTokens: 0,
+      cost: 0,
+      latencyMs: 0,
+      success: false,
+      errorMessage,
+    });
+
+    // Track failed LLM call in Convex
+    try {
+      await convex.mutation(api.aiTracking.track, {
+        inputTokens: 0,
+        outputTokens: 0,
+        totalTokens: 0,
+        model: "unknown",
+        provider: "unknown",
+        usageType: "conversation",
+        costUsd: 0,
+        costPhp: 0,
+        success: false,
+        errorMessage,
+      });
+    } catch (trackError) {
+      console.error("Failed to track error in Convex:", trackError);
+    }
+
+    return new Response(
+      JSON.stringify({
+        error: "Failed to process chat request",
+        details: errorMessage,
+      }),
+      {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+  }
+}

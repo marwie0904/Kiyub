@@ -1,0 +1,17 @@
+{
+  "name": "openrouter-streaming-test",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "basic": "tsx src/basic-streaming.ts",
+    "reasoning": "tsx src/reasoning-streaming.ts"
+  },
+  "dependencies": {
+    "@openrouter/sdk": "latest",
+    "dotenv": "^17.2.3"
+  },
+  "devDependencies": {
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
+  }
+}
