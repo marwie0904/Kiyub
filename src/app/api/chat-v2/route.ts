@@ -7,6 +7,7 @@ import { Id } from "../../../../convex/_generated/dataModel";
 import { trackLLMCallServer, calculateLLMCost } from "@/lib/analytics/llm-tracking";
 import { usdToPhp } from "@/lib/currency";
 import { getProviderForModel } from "@/lib/provider-helper";
+import { chatWithCerebrasWebSearch } from "@/lib/cerebras-web-search";
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 30;
@@ -208,7 +209,111 @@ export async function POST(req: Request) {
       console.log("✅ User message saved");
     }
 
-    // Simple streaming without tools
+    // Check if user is requesting web search and using Cerebras
+    const isWebSearchRequest = userMessageContent.toLowerCase().includes('web search') ||
+                               userMessageContent.toLowerCase().includes('search for') ||
+                               userMessageContent.toLowerCase().includes('look up') ||
+                               userMessageContent.toLowerCase().includes('current') ||
+                               userMessageContent.toLowerCase().includes('latest') ||
+                               userMessageContent.toLowerCase().includes('recent');
+    const useWebSearch = isWebSearchRequest && providerType === "cerebras";
+
+    if (useWebSearch) {
+      console.log("🔍 [Web Search] Detected web search request with Cerebras, using tool calling");
+
+      // Use Cerebras SDK for tool calling (non-streaming)
+      const cerebrasResult = await chatWithCerebrasWebSearch(
+        coreMessages.map(msg => ({
+          role: msg.role,
+          content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)
+        })),
+        {
+          temperature: 0.7,
+          maxTokens: 2000,
+          maxIterations: 5
+        }
+      );
+
+      const text = cerebrasResult.content;
+      const usage = {
+        promptTokens: cerebrasResult.usage.promptTokens,
+        completionTokens: cerebrasResult.usage.completionTokens,
+        totalTokens: cerebrasResult.usage.totalTokens
+      };
+
+      // Save assistant message to Convex
+      if (conversationId && text) {
+        await convex.mutation(api.messages.create, {
+          conversationId: conversationId as Id<"conversations">,
+          content: text,
+          role: "assistant",
+          tokenUsage: usage,
+        });
+
+        // Generate title if first exchange
+        const conversation = await convex.query(api.conversations.get, {
+          conversationId: conversationId as Id<"conversations">,
+        });
+
+        if (conversation && conversation.messageCount === 2) {
+          convex
+            .action(api.openai.generateTitle, {
+              conversationId: conversationId as Id<"conversations">,
+            })
+            .catch((err) => console.error("Title generation failed:", err));
+        }
+      }
+
+      // Track analytics
+      if (conversationId) {
+        const costUsd = calculateLLMCost(model || defaultModel, usage.promptTokens, usage.completionTokens);
+
+        await trackLLMCallServer({
+          model: model || defaultModel,
+          provider: providerType,
+          promptTokens: usage.promptTokens,
+          completionTokens: usage.completionTokens,
+          totalTokens: usage.totalTokens,
+          cost: costUsd,
+          latencyMs: Date.now() - startTime,
+          conversationId: conversationId as string,
+          success: true,
+          toolsUsed: cerebrasResult.toolCalls > 0 ? ['webSearch'] : undefined
+        });
+
+        await convex.mutation(api.aiTracking.track, {
+          inputTokens: usage.promptTokens,
+          outputTokens: usage.completionTokens,
+          totalTokens: usage.totalTokens,
+          model: model || defaultModel,
+          provider: getProviderForModel(model || defaultModel),
+          usageType: "conversation",
+          costUsd,
+          costPhp: usdToPhp(costUsd),
+          conversationId: conversationId as Id<"conversations">,
+          latencyMs: Date.now() - startTime,
+          success: true,
+        });
+      }
+
+      // Return the response as a formatted stream
+      const encoder = new TextEncoder();
+      const customStream = new ReadableStream({
+        start(controller) {
+          controller.enqueue(encoder.encode(`0:${JSON.stringify(text)}\n`));
+          controller.close();
+        },
+      });
+
+      return new Response(customStream, {
+        headers: {
+          'Content-Type': 'text/plain; charset=utf-8',
+          'X-Content-Type-Options': 'nosniff',
+        },
+      });
+    }
+
+    // Simple streaming without tools (for non-web search or DeepInfra)
     const result = await streamText({
       model: selectedModel,
       messages: coreMessages,
