@@ -8,6 +8,7 @@ import { trackLLMCallServer, calculateLLMCost } from "@/lib/analytics/llm-tracki
 import { usdToPhp } from "@/lib/currency";
 import { getProviderForModel } from "@/lib/provider-helper";
 import { chatWithCerebrasWebSearch } from "@/lib/cerebras-web-search";
+import { chatWithDeepInfraWebSearch } from "@/lib/deepinfra-web-search";
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 30;
@@ -40,12 +41,13 @@ function convertMessages(messages: any[]) {
 
 export async function POST(req: Request) {
   try {
-    const { messages, model, conversationId, attachments } = await req.json();
+    const { messages, model, conversationId, attachments, useHighReasoning } = await req.json();
 
     console.log("=== API Request ===");
     console.log("Model:", model);
     console.log("Conversation ID:", conversationId);
     console.log("Attachments:", attachments);
+    console.log("Use High Reasoning:", useHighReasoning);
 
     // Convert UIMessages to CoreMessages
     let coreMessages;
@@ -209,40 +211,66 @@ export async function POST(req: Request) {
       console.log("✅ User message saved");
     }
 
-    // Check if user is requesting web search and using Cerebras
+    // Check if user is requesting web search
     const isWebSearchRequest = userMessageContent.toLowerCase().includes('web search') ||
                                userMessageContent.toLowerCase().includes('search for') ||
                                userMessageContent.toLowerCase().includes('look up') ||
                                userMessageContent.toLowerCase().includes('current') ||
                                userMessageContent.toLowerCase().includes('latest') ||
                                userMessageContent.toLowerCase().includes('recent');
-    const useWebSearch = isWebSearchRequest && providerType === "cerebras";
+    const useWebSearch = isWebSearchRequest && (providerType === "cerebras" || providerType === "deepinfra");
 
     if (useWebSearch) {
-      console.log("🔍 [Web Search] Detected web search request with Cerebras, using tool calling");
+      console.log(`🔍 [Web Search] Detected web search request with ${providerType}, using tool calling`);
 
-      // Use Cerebras SDK for tool calling (non-streaming)
-      const cerebrasResult = await chatWithCerebrasWebSearch(
-        coreMessages.map(msg => ({
-          role: msg.role,
-          content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)
-        })),
-        {
-          temperature: 0.3,
-          maxTokens: 2000,
-          maxIterations: 4,
-          maxToolCalls: 1
-        }
-      );
+      // Configure reasoning effort and max tool calls based on Extended Thinking toggle
+      // High reasoning (default): reasoning = "high", maxToolCalls = 3
+      // Low reasoning: reasoning = "low", maxToolCalls = 1
+      const reasoningLevel = useHighReasoning !== false ? "high" : "low";
+      const maxToolCalls = useHighReasoning !== false ? 3 : 1;
 
-      const text = cerebrasResult.content;
-      console.log('🔍 [API] Cerebras result content type:', typeof text);
-      console.log('🔍 [API] Cerebras result content preview:', text?.substring(0, 200));
+      console.log(`🧠 [Extended Thinking] Reasoning level: ${reasoningLevel}, Max tool calls: ${maxToolCalls}`);
+
+      // Use appropriate SDK for tool calling (non-streaming)
+      let webSearchResult;
+
+      if (providerType === "cerebras") {
+        webSearchResult = await chatWithCerebrasWebSearch(
+          coreMessages.map(msg => ({
+            role: msg.role,
+            content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)
+          })),
+          {
+            temperature: 0.3,
+            maxTokens: 2000,
+            maxIterations: 4,
+            maxToolCalls,
+            reasoning: reasoningLevel
+          }
+        );
+      } else if (providerType === "deepinfra") {
+        webSearchResult = await chatWithDeepInfraWebSearch(
+          coreMessages.map(msg => ({
+            role: msg.role,
+            content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)
+          })),
+          {
+            temperature: 0.3,
+            maxTokens: 2000,
+            maxIterations: 4,
+            maxToolCalls
+          }
+        );
+      }
+
+      const text = webSearchResult.content;
+      console.log(`🔍 [API] ${providerType} result content type:`, typeof text);
+      console.log(`🔍 [API] ${providerType} result content preview:`, text?.substring(0, 200));
 
       const usage = {
-        promptTokens: cerebrasResult.usage.promptTokens,
-        completionTokens: cerebrasResult.usage.completionTokens,
-        totalTokens: cerebrasResult.usage.totalTokens
+        promptTokens: webSearchResult.usage.promptTokens,
+        completionTokens: webSearchResult.usage.completionTokens,
+        totalTokens: webSearchResult.usage.totalTokens
       };
 
       // Save assistant message to Convex with search metadata
@@ -252,7 +280,7 @@ export async function POST(req: Request) {
           content: text,
           role: "assistant",
           tokenUsage: usage,
-          searchMetadata: cerebrasResult.searchMetadata,
+          searchMetadata: webSearchResult.searchMetadata,
         });
 
         // Generate title if first exchange
@@ -283,7 +311,7 @@ export async function POST(req: Request) {
           latencyMs: Date.now() - startTime,
           conversationId: conversationId as string,
           success: true,
-          toolsUsed: cerebrasResult.toolCalls > 0 ? ['webSearch'] : undefined
+          toolsUsed: webSearchResult.toolCalls > 0 ? ['webSearch'] : undefined
         });
 
         await convex.mutation(api.aiTracking.track, {
