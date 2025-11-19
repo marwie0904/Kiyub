@@ -16,7 +16,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Plus, Timer, ChevronDown, ArrowUp, MoreVertical, Pin, ListChecks, Globe, SlidersHorizontal } from "lucide-react";
+import { Plus, Timer, ChevronDown, ArrowUp, MoreVertical, Pin, ListChecks, Globe, SlidersHorizontal, Search } from "lucide-react";
 import { Message } from "./message";
 import { CreateTestModal } from "./tests/create-test-modal";
 import { TestDisplayModal, Test } from "./tests/test-display-modal";
@@ -58,6 +58,7 @@ export function ChatArea({ conversationId, isSidebarCollapsed = false, onStreami
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const [isProcessingFiles, setIsProcessingFiles] = useState(false);
   const [useHighReasoning, setUseHighReasoning] = useState(false);
+  const [useResearchMode, setUseResearchMode] = useState(false);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const scrollViewportRef = useRef<HTMLDivElement>(null);
@@ -637,57 +638,54 @@ export function ChatArea({ conversationId, isSidebarCollapsed = false, onStreami
                     onChange={handleFileSelect}
                     className="hidden"
                   />
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className={`h-8 w-8 rounded-md border border-border/40 hover:border-border hover:bg-accent/5 ${
-                          useHighReasoning ? 'bg-primary/10 border-primary/50 text-primary' : ''
-                        }`}
-                        onClick={() => setUseHighReasoning(!useHighReasoning)}
-                      >
-                        <Timer className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Extended Thinking</p>
-                    </TooltipContent>
-                  </Tooltip>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
                       <Button
                         type="button"
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 rounded-md border border-border/40 hover:border-border hover:bg-accent/5"
-                        onClick={() => setIsCreateTestOpen(true)}
-                        disabled={!conversationId || messages.length === 0}
-                      >
-                        <ListChecks className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Create Test</p>
-                    </TooltipContent>
-                  </Tooltip>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 rounded-md border border-border/40 hover:border-border hover:bg-accent/5"
-                        onClick={() => {/* TODO: Add settings action */}}
                       >
                         <SlidersHorizontal className="h-4 w-4" />
                       </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Settings</p>
-                    </TooltipContent>
-                  </Tooltip>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-56">
+                      <DropdownMenuItem
+                        onSelect={(e) => e.preventDefault()}
+                        onClick={() => setUseHighReasoning(!useHighReasoning)}
+                        className="flex items-center justify-between cursor-pointer"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Timer className="h-4 w-4" />
+                          <span>Extended Thinking</span>
+                        </div>
+                        <div className={`h-4 w-8 rounded-full transition-colors ${useHighReasoning ? 'bg-primary' : 'bg-muted'} relative`}>
+                          <div className={`absolute top-0.5 h-3 w-3 rounded-full bg-white transition-transform ${useHighReasoning ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                        </div>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onSelect={(e) => e.preventDefault()}
+                        disabled
+                        className="flex items-center justify-between cursor-not-allowed opacity-50"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Search className="h-4 w-4" />
+                          <span>Research Mode</span>
+                        </div>
+                        <div className={`h-4 w-8 rounded-full transition-colors bg-muted relative`}>
+                          <div className={`absolute top-0.5 h-3 w-3 rounded-full bg-white transition-transform translate-x-0.5`} />
+                        </div>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => setIsCreateTestOpen(true)}
+                        disabled={!conversationId || messages.length === 0}
+                        className="flex items-center gap-2"
+                      >
+                        <ListChecks className="h-4 w-4" />
+                        <span>Create Test</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
 
                 <div className="flex items-center gap-1.5">
