@@ -6,7 +6,7 @@ import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area"
 import { cn } from "@/lib/utils"
 
 interface ScrollAreaProps extends React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Root> {
-  viewportRef?: React.RefObject<HTMLDivElement>
+  viewportRef?: React.RefObject<HTMLDivElement | null>
 }
 
 const ScrollArea = React.forwardRef<

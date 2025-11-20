@@ -3,8 +3,8 @@
 import { useState, useEffect, useRef, useMemo, useCallback, useTransition } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
-import { api } from "../../../../convex/_generated/api";
-import { Id } from "../../../../convex/_generated/dataModel";
+import { api } from "convex/_generated/api";
+import { Id } from "convex/_generated/dataModel";
 import { Sidebar } from "@/components/sidebar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";

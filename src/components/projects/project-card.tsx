@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Doc } from "../../../convex/_generated/dataModel";
+import { Doc } from "convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 
 interface ProjectCardProps {

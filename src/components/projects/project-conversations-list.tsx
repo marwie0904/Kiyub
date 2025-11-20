@@ -1,8 +1,8 @@
 "use client";
 
 import { useQuery } from "convex/react";
-import { api } from "../../../convex/_generated/api";
-import { Id } from "../../../convex/_generated/dataModel";
+import { api } from "convex/_generated/api";
+import { Id } from "convex/_generated/dataModel";
 import { Button } from "../ui/button";
 import { formatDistanceToNow } from "date-fns";
 import { useRouter } from "next/navigation";

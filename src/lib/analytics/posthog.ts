@@ -26,8 +26,6 @@ export function initPostHog() {
             password: true,
           },
           recordCrossOriginIframes: false,
-          // Start recording only when triggered (0% by default)
-          sampleRate: 0,
         },
 
         // Survey Configuration
@@ -68,6 +66,16 @@ export function startSessionRecording(): void {
   // Start recording this specific session
   posthog.startSessionRecording()
   console.log('Session recording started')
+}
+
+/**
+ * Stop recording the current session
+ */
+export function stopSessionRecording(): void {
+  if (!posthog) return
+
+  posthog.stopSessionRecording()
+  console.log('Session recording stopped')
 }
 
 /**

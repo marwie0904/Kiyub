@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { CanvasCardContent } from "./canvas-card-content";
 import { CanvasTextSelectionHandler } from "./canvas-text-selection-handler";
-import { Id } from "../../../convex/_generated/dataModel";
+import { Id } from "convex/_generated/dataModel";
 import { Plus, Minus, ExternalLink, Trash2, Copy, GitBranch } from "lucide-react";
 import { ChatBox } from "@/components/ui/chat-box";
 import {

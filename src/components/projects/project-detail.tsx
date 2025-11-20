@@ -4,8 +4,8 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
 import { useChat } from "@ai-sdk/react";
-import { api } from "../../../convex/_generated/api";
-import { Id } from "../../../convex/_generated/dataModel";
+import { api } from "convex/_generated/api";
+import { Id } from "convex/_generated/dataModel";
 import { Message } from "@/components/message";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -79,13 +79,7 @@ export function ProjectDetail({ projectId, initialConversationId }: ProjectDetai
     activeConversationId ? { conversationId: activeConversationId } : "skip"
   );
 
-  const { messages, sendMessage, status, setMessages } = useChat({
-    api: "/api/chat",
-    body: {
-      conversationId: activeConversationId || undefined,
-      useHighReasoning,
-    },
-  });
+  const { messages, sendMessage, status, setMessages } = useChat();
 
   const isLoading = status === "submitted" || status === "streaming";
 
@@ -97,7 +91,7 @@ export function ProjectDetail({ projectId, initialConversationId }: ProjectDetai
       const formattedMessages = convexMessages.map((msg) => ({
         id: msg._id,
         role: msg.role as "user" | "assistant" | "system",
-        content: msg.content,
+        parts: [{ type: "text" as const, text: msg.content }],
         createdAt: new Date(msg.createdAt),
       }));
       setMessages(formattedMessages);
@@ -193,12 +187,13 @@ export function ProjectDetail({ projectId, initialConversationId }: ProjectDetai
     sendMessage(
       {
         role: "user",
-        content: input,
+        parts: [{ type: "text" as const, text: input }],
       },
       {
         body: {
           model: selectedModel.value,
           conversationId,
+          useHighReasoning,
         },
       }
     );
@@ -539,18 +534,19 @@ export function ProjectDetail({ projectId, initialConversationId }: ProjectDetai
                   </p>
                 </div>
               ) : (
-                messages.map((msg, index) => (
-                  <Message
-                    key={msg.id}
-                    role={msg.role}
-                    content={msg.content}
-                    parts={msg.parts}
-                    conversationContext={messages}
-                    model={selectedModel.value}
-                    isStreaming={isLoading && index === messages.length - 1}
-                    searchMetadata={(msg as any).searchMetadata}
-                  />
-                ))
+                messages
+                  .filter((msg) => msg.role !== "system")
+                  .map((msg, index) => (
+                    <Message
+                      key={msg.id}
+                      role={msg.role as "user" | "assistant"}
+                      parts={msg.parts}
+                      conversationContext={messages}
+                      model={selectedModel.value}
+                      isStreaming={isLoading && index === messages.length - 1}
+                      searchMetadata={(msg as any).searchMetadata}
+                    />
+                  ))
               )}
               {isLoading && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">

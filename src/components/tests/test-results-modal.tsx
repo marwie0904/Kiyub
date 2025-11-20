@@ -117,7 +117,7 @@ export function TestResultsModal({
                   } else if (question.type === "fill_blank") {
                     isCorrect =
                       userAnswer?.toString().toLowerCase().trim() ===
-                      question.correctAnswer.toString().toLowerCase().trim();
+                      question.correctAnswer?.toString().toLowerCase().trim();
                   } else if (question.type === "written") {
                     // Written answers are not auto-graded
                     isCorrect = false;

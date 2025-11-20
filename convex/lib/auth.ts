@@ -8,7 +8,7 @@ import { auth } from "../auth";
  */
 export async function getCurrentUserOrThrow(
   ctx: QueryCtx | MutationCtx
-): Promise<{ _id: Id<"users">; name?: string; email?: string }> {
+) {
   const userId = await auth.getUserId(ctx);
 
   if (!userId) {
@@ -30,7 +30,7 @@ export async function getCurrentUserOrThrow(
  */
 export async function getCurrentUser(
   ctx: QueryCtx | MutationCtx
-): Promise<{ _id: Id<"users">; name?: string; email?: string } | null> {
+) {
   const userId = await auth.getUserId(ctx);
 
   if (!userId) {

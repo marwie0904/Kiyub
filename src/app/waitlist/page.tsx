@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useMutation } from "convex/react";
-import { api } from "../../../convex/_generated/api";
+import { api } from "convex/_generated/api";
 import { FileText, Sparkles, MessageSquare } from "lucide-react";
 
 export default function WaitlistPage() {

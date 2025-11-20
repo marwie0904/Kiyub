@@ -1,4 +1,4 @@
-import { Doc } from "../../../convex/_generated/dataModel";
+import { Doc } from "convex/_generated/dataModel";
 import {
   Dialog,
   DialogContent,
@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 import { User, Mail, Calendar, Save } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useMutation } from "convex/react";
-import { api } from "../../../convex/_generated/api";
+import { api } from "convex/_generated/api";
 
 interface BugReportDetailModalProps {
   bug: Doc<"bugReports"> | null;

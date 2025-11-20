@@ -12,15 +12,15 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { QuestionRenderer } from "./question-renderer";
 import { useMutation, useQuery } from "convex/react";
-import { api } from "../../../convex/_generated/api";
-import { Id } from "../../../convex/_generated/dataModel";
+import { api } from "convex/_generated/api";
+import { Id } from "convex/_generated/dataModel";
 
 export interface Question {
   id: string;
   type: "multiple_choice" | "written" | "fill_blank" | "flashcard";
-  question: string;
+  question?: string;
   options?: string[];
-  correctAnswer: string | string[];
+  correctAnswer?: string | string[];
   explanation?: string;
   front?: string;
   back?: string;

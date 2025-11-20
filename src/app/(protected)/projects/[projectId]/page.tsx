@@ -3,7 +3,7 @@
 import { use } from "react";
 import { useSearchParams } from "next/navigation";
 import { ProjectDetail } from "@/components/projects/project-detail";
-import { Id } from "../../../../convex/_generated/dataModel";
+import { Id } from "convex/_generated/dataModel";
 
 export default function ProjectPage({
   params,

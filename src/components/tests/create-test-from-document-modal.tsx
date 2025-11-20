@@ -83,7 +83,7 @@ export function CreateTestFromDocumentModal({
     maxSize: MAX_FILE_SIZE,
     noClick: false,
     noKeyboard: false,
-    validator: null, // Disable built-in validation, we handle it in onDrop
+    validator: undefined, // Disable built-in validation, we handle it in onDrop
   });
 
   const removeFile = (index: number) => {

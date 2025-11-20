@@ -1,8 +1,8 @@
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { generateText } from "ai";
 import { ConvexHttpClient } from "convex/browser";
-import { api } from "../../../../convex/_generated/api";
-import { Id } from "../../../../convex/_generated/dataModel";
+import { api } from "convex/_generated/api";
+import { Id } from "convex/_generated/dataModel";
 import { trackLLMCallServer, calculateLLMCost } from "@/lib/analytics/llm-tracking";
 import { usdToPhp } from "@/lib/currency";
 import { getProviderForModel } from "@/lib/provider-helper";

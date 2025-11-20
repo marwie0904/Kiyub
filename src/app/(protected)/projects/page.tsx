@@ -2,14 +2,14 @@
 
 import { useState } from "react";
 import { useQuery } from "convex/react";
-import { api } from "../../../convex/_generated/api";
+import { api } from "convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, PanelLeft } from "lucide-react";
 import { ProjectCard } from "@/components/projects/project-card";
 import { CreateProjectModal } from "@/components/projects/create-project-modal";
 import { Sidebar } from "@/components/sidebar";
-import { Id } from "../../../convex/_generated/dataModel";
+import { Id } from "convex/_generated/dataModel";
 
 export default function ProjectsPage() {
   const projects = useQuery(api.projects.list);

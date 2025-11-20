@@ -135,15 +135,15 @@ export async function streamCerebras(
     max_completion_tokens: 2000,
   });
 
-  const message = completion.choices[0].message;
+  const message = (completion as any).choices[0].message;
 
   return {
     text: message.content || "",
     reasoning: (message as any).reasoning, // Cerebras uses reasoning field
     usage: {
-      promptTokens: completion.usage?.prompt_tokens || 0,
-      completionTokens: completion.usage?.completion_tokens || 0,
-      totalTokens: completion.usage?.total_tokens || 0,
+      promptTokens: (completion.usage as any)?.prompt_tokens || 0,
+      completionTokens: (completion.usage as any)?.completion_tokens || 0,
+      totalTokens: (completion.usage as any)?.total_tokens || 0,
     },
   };
 }

@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
-import { api } from "../../../../convex/_generated/api";
-import { Doc } from "../../../../convex/_generated/dataModel";
+import { api } from "convex/_generated/api";
+import { Doc } from "convex/_generated/dataModel";
 import { BugReportCard } from "@/components/admin/bug-report-card";
 import { BugReportDetailModal } from "@/components/admin/bug-report-detail-modal";
 import { ScrollArea } from "@/components/ui/scroll-area";

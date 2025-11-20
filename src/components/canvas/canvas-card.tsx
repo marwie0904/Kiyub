@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Doc } from "../../../convex/_generated/dataModel";
+import { Doc } from "convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { LayoutTemplate, Trash2 } from "lucide-react";
 import {
@@ -22,7 +22,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useMutation } from "convex/react";
-import { api } from "../../../convex/_generated/api";
+import { api } from "convex/_generated/api";
 
 interface CanvasCardProps {
   canvas: Doc<"canvases">;

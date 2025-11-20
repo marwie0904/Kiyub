@@ -2,7 +2,7 @@ import { streamText, convertToModelMessages } from "ai";
 import { createCerebras } from "@ai-sdk/cerebras";
 import { createDeepInfra } from "@ai-sdk/deepinfra";
 import { ConvexHttpClient } from "convex/browser";
-import { api } from "../../../../convex/_generated/api";
+import { api } from "convex/_generated/api";
 import { trackLLMCallServer, calculateLLMCost } from "@/lib/analytics/llm-tracking";
 import { usdToPhp } from "@/lib/currency";
 import { getProviderForModel } from "@/lib/provider-helper";

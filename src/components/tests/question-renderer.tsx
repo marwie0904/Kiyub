@@ -157,6 +157,7 @@ export function QuestionRenderer({
 
   const renderFillInTheBlank = () => {
     // Replace ____ or _____ with an input field
+    if (!question.question) return null;
     const parts = question.question.split(/____+/);
 
     return (
@@ -176,7 +177,7 @@ export function QuestionRenderer({
                   className={`inline-block w-48 h-10 ${
                     showCorrectAnswer
                       ? answer?.toString().toLowerCase().trim() ===
-                        question.correctAnswer.toString().toLowerCase().trim()
+                        question.correctAnswer?.toString().toLowerCase().trim()
                         ? "bg-green-500/10 border-green-500"
                         : "bg-red-500/10 border-red-500"
                       : ""
@@ -274,7 +275,7 @@ export function QuestionRenderer({
                     }]
                   ]}
                 >
-                  {question.back || question.correctAnswer || ""}
+                  {question.back || (Array.isArray(question.correctAnswer) ? question.correctAnswer.join(", ") : question.correctAnswer) || ""}
                 </ReactMarkdown>
               </div>
             </div>

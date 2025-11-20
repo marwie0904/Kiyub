@@ -2,8 +2,8 @@
 
 import { useRef, useState } from "react";
 import { useQuery, useMutation } from "convex/react";
-import { api } from "../../../convex/_generated/api";
-import { Id } from "../../../convex/_generated/dataModel";
+import { api } from "convex/_generated/api";
+import { Id } from "convex/_generated/dataModel";
 import { Button } from "../ui/button";
 import { ScrollArea } from "../ui/scroll-area";
 import { Upload, FileText, Image as ImageIcon, X, Download } from "lucide-react";

@@ -257,11 +257,12 @@ MINIMIZE TOOL CALLS:
 
       // Execute tool calls (we've already verified we're under the limit above)
       for (const toolCall of assistantMessage.tool_calls) {
-        if (toolCall.function.name === 'webSearch') {
+        const toolCallFunc = (toolCall as any).function;
+        if (toolCallFunc.name === 'webSearch') {
           toolCallsCount++;
           console.log(`🔍 [DeepInfra Web Search] Executing search ${toolCallsCount}/${maxToolCalls}`);
 
-          const args = JSON.parse(toolCall.function.arguments);
+          const args = JSON.parse(toolCallFunc.arguments);
           console.log('🔍 [DeepInfra Web Search] Search query:', args.query);
           console.log('🔍 [DeepInfra Web Search] Num results requested:', args.numResults || 10);
 

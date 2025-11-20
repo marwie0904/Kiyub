@@ -1,4 +1,4 @@
-import { Doc } from "../../../convex/_generated/dataModel";
+import { Doc } from "convex/_generated/dataModel";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Id } from "../../../convex/_generated/dataModel";
+import { Id } from "convex/_generated/dataModel";
 import { useAuthToken } from "@convex-dev/auth/react";
 import {
   Dialog,

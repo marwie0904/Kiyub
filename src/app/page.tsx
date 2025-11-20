@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Sidebar } from "@/components/sidebar";
 import { ChatArea } from "@/components/chat-area";
@@ -11,23 +11,25 @@ import { Menu, PanelLeft, Settings } from "lucide-react";
 import { Id } from "../../convex/_generated/dataModel";
 import { ProtectedLayout } from "@/components/auth/protected-layout";
 
-export default function Home() {
+// Component to handle URL search params
+function ConversationFromUrl({ setActiveConversationId }: { setActiveConversationId: (id: Id<"conversations"> | null) => void }) {
   const searchParams = useSearchParams();
   const conversationFromUrl = searchParams.get("conversation");
 
-  const [activeConversationId, setActiveConversationId] = useState<Id<"conversations"> | null>(
-    conversationFromUrl as Id<"conversations"> | null
-  );
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [streamingConversationId, setStreamingConversationId] = useState<Id<"conversations"> | null>(null);
-  // const [isSettingsOpen, setIsSettingsOpen] = useState(false); // Hidden for now, uncomment to re-enable
-
-  // Update active conversation when URL changes
   useEffect(() => {
     if (conversationFromUrl) {
       setActiveConversationId(conversationFromUrl as Id<"conversations">);
     }
-  }, [conversationFromUrl]);
+  }, [conversationFromUrl, setActiveConversationId]);
+
+  return null;
+}
+
+function HomeContent() {
+  const [activeConversationId, setActiveConversationId] = useState<Id<"conversations"> | null>(null);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [streamingConversationId, setStreamingConversationId] = useState<Id<"conversations"> | null>(null);
+  // const [isSettingsOpen, setIsSettingsOpen] = useState(false); // Hidden for now, uncomment to re-enable
 
   // Handle streaming state change - track which conversation is streaming
   const handleStreamingChange = (isStreaming: boolean) => {
@@ -55,7 +57,10 @@ export default function Home() {
   // };
 
   return (
-    <ProtectedLayout>
+    <>
+      <Suspense fallback={null}>
+        <ConversationFromUrl setActiveConversationId={setActiveConversationId} />
+      </Suspense>
       <div className="flex h-screen overflow-hidden">
         {/* Desktop Sidebar */}
         <aside className={`hidden md:block transition-all duration-300 ${isSidebarCollapsed ? 'w-0' : 'w-[280px]'}`}>
@@ -126,6 +131,14 @@ export default function Home() {
         </aside>
       )} */}
     </div>
+    </>
+  );
+}
+
+export default function Home() {
+  return (
+    <ProtectedLayout>
+      <HomeContent />
     </ProtectedLayout>
   );
 }

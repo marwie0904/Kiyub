@@ -8,7 +8,7 @@ const RATE_LIMIT_WINDOW_MS = 1000; // 1 second
  * Throws an error if rate limit is exceeded
  */
 export async function checkRateLimit(
-  ctx: QueryCtx | MutationCtx,
+  ctx: MutationCtx,
   userId: Id<"users">
 ): Promise<void> {
   const now = Date.now();

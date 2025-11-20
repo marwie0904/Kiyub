@@ -22,7 +22,7 @@ export function RecordingWidget({ bugReportId, onClose }: RecordingWidgetProps) 
   const [position, setPosition] = useState({ x: 0, y: 0 })
   const [isDragging, setIsDragging] = useState(false)
   const startTimeRef = useRef(Date.now())
-  const timerRef = useRef<NodeJS.Timeout>()
+  const timerRef = useRef<NodeJS.Timeout | undefined>(undefined)
   const dragRef = useRef<{ startX: number; startY: number; startPosX: number; startPosY: number } | null>(null)
 
   const updateSessionRecording = useMutation(api.bugReports.updateSessionRecording)

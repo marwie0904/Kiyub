@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Doc, Id } from "../../../convex/_generated/dataModel";
+import { Doc, Id } from "convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, PanelRightClose, PanelRightOpen } from "lucide-react";
 import { useMutation } from "convex/react";
-import { api } from "../../../convex/_generated/api";
+import { api } from "convex/_generated/api";
 import { ProjectFiles } from "./project-files";
 import { ProjectCapacityIndicator } from "./project-capacity-indicator";
 import { Separator } from "../ui/separator";

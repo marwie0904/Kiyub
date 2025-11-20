@@ -20,7 +20,7 @@ interface ChatBoxProps {
   // Input props
   value: string;
   onChange: (value: string) => void;
-  onSubmit: (e: FormEvent) => void;
+  onSubmit: (e: FormEvent<HTMLFormElement>) => void | Promise<void>;
   placeholder?: string;
   disabled?: boolean;
 

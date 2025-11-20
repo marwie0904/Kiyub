@@ -234,7 +234,7 @@ MINIMIZE TOOL CALLS:
       chunkCount++;
       console.log(`📦 [Cerebras Web Search] Chunk ${chunkCount} received`);
 
-      const delta = chunk.choices[0]?.delta;
+      const delta = (chunk as any).choices[0]?.delta;
 
       if (!delta) {
         console.log(`⚠️ [Cerebras Web Search] Chunk ${chunkCount}: No delta`);
@@ -287,9 +287,10 @@ MINIMIZE TOOL CALLS:
       // Accumulate usage from final chunk
       if (chunk.usage) {
         console.log(`📊 [Cerebras Web Search] Chunk ${chunkCount}: Usage info received`);
-        totalUsage.promptTokens = chunk.usage.prompt_tokens || 0;
-        totalUsage.completionTokens = chunk.usage.completion_tokens || 0;
-        totalUsage.totalTokens = chunk.usage.total_tokens || 0;
+        const usage = chunk.usage as any;
+        totalUsage.promptTokens = usage.prompt_tokens || 0;
+        totalUsage.completionTokens = usage.completion_tokens || 0;
+        totalUsage.totalTokens = usage.total_tokens || 0;
       }
     }
 
@@ -552,7 +553,7 @@ MINIMIZE TOOL CALLS:
       chunkCount++;
       console.log(`🔵 [Cerebras Stream] Chunk #${chunkCount} received from API`);
 
-      const delta = chunk.choices[0]?.delta;
+      const delta = (chunk as any).choices[0]?.delta;
 
       if (!delta) {
         console.log(`⚠️ [Cerebras Stream] Chunk #${chunkCount} has no delta, skipping`);
@@ -601,9 +602,10 @@ MINIMIZE TOOL CALLS:
       // Accumulate usage from final chunk
       if (chunk.usage) {
         console.log(`🔵 [Cerebras Stream] Chunk #${chunkCount} contains usage data`);
-        totalUsage.promptTokens = chunk.usage.prompt_tokens || 0;
-        totalUsage.completionTokens = chunk.usage.completion_tokens || 0;
-        totalUsage.totalTokens = chunk.usage.total_tokens || 0;
+        const usage = chunk.usage as any;
+        totalUsage.promptTokens = usage.prompt_tokens || 0;
+        totalUsage.completionTokens = usage.completion_tokens || 0;
+        totalUsage.totalTokens = usage.total_tokens || 0;
       }
     }
 

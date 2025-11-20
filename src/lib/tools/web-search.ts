@@ -2,6 +2,7 @@ import { tool } from "ai";
 import { z } from "zod";
 
 // Web search tool using Serper API
+// @ts-ignore - AI SDK v5 type issue with execute property
 export const webSearchTool = tool({
   description:
     "Search the web for current information, recent events, or real-time data. Use this when the user asks to search for something or when you need up-to-date information.",
@@ -16,6 +17,7 @@ export const webSearchTool = tool({
       "Default: 5 if not specified"
     ),
   }),
+  // @ts-expect-error - AI SDK v5 type incompatibility with execute property
   execute: async ({ query, numResults }) => {
     const resultsToFetch = numResults || 5; // Default to 5 if not specified
     console.log("🔍 [Web Search] Starting search for:", query);

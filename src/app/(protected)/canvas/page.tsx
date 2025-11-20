@@ -2,14 +2,14 @@
 
 import { useState } from "react";
 import { useQuery } from "convex/react";
-import { api } from "../../../convex/_generated/api";
+import { api } from "convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, PanelLeft } from "lucide-react";
 import { CanvasCard } from "@/components/canvas/canvas-card";
 import { CreateCanvasModal } from "@/components/canvas/create-canvas-modal";
 import { Sidebar } from "@/components/sidebar";
-import { Id } from "../../../convex/_generated/dataModel";
+import { Id } from "convex/_generated/dataModel";
 
 export default function CanvasPage() {
   const canvases = useQuery(api.canvases.list);

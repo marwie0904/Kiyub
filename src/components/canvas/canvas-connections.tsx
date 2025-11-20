@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useMemo, memo } from "react";
-import { Id } from "../../../convex/_generated/dataModel";
+import { Id } from "convex/_generated/dataModel";
 import { useMutation } from "convex/react";
-import { api } from "../../../convex/_generated/api";
+import { api } from "convex/_generated/api";
 import { drawArrowPath, getClosestEdgePoint, calculateBranchPoints } from "@/lib/canvas-utils";
 import { X } from "lucide-react";
 
