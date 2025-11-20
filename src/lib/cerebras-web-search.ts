@@ -577,7 +577,8 @@ MINIMIZE TOOL CALLS:
 
       // Handle content streaming - YIELD immediately to frontend
       if (delta.content) {
-        console.log(`📝 [Cerebras Stream] Yielding content chunk: "${delta.content}"`);
+        const timestamp = Date.now();
+        console.log(`📝 [Cerebras Stream] [${timestamp}] Yielding content chunk: "${delta.content}"`);
         yield { type: 'content', data: delta.content };
         assistantMessage.content += delta.content;
       }

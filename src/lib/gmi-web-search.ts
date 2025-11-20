@@ -582,7 +582,8 @@ MINIMIZE TOOL CALLS:
             // Handle content streaming - yield immediately (no filtering)
             if (delta.content) {
               assistantMessage.content += delta.content;
-              console.log(`📤 [GMI Web Search Stream] Content chunk: "${delta.content}"`);
+              const timestamp = Date.now();
+              console.log(`📤 [GMI Web Search Stream] [${timestamp}] Content chunk: "${delta.content}"`);
               yield { type: 'content', data: delta.content };
             }
           } catch (e) {

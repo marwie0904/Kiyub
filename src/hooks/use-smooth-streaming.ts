@@ -5,6 +5,7 @@ export function useSmoothStreaming(content: string, isStreaming: boolean) {
   const lastContentLengthRef = useRef(0);
   const bufferRef = useRef<string[]>([]);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const flushIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const isStreamingRef = useRef(isStreaming);
 
   // Update streaming ref
@@ -38,18 +39,45 @@ export function useSmoothStreaming(content: string, isStreaming: boolean) {
     }
   }, [content]);
 
-  // When streaming stops, flush remaining buffer immediately
+  // When streaming stops, flush remaining buffer smoothly
   useEffect(() => {
-    if (!isStreaming) {
-      // Immediately flush all remaining content
+    if (!isStreaming && bufferRef.current.length > 0) {
+      // Clear existing flush interval if any
+      if (flushIntervalRef.current) {
+        clearInterval(flushIntervalRef.current);
+      }
+
+      // Flush remaining buffer smoothly instead of instantly
+      flushIntervalRef.current = setInterval(() => {
+        if (bufferRef.current.length > 0) {
+          // Display all remaining characters in chunks
+          const charsToAdd = bufferRef.current.splice(0, 30);
+          setDisplayedContent((prev) => prev + charsToAdd.join(""));
+        } else {
+          // Buffer is empty, we're done
+          if (flushIntervalRef.current) {
+            clearInterval(flushIntervalRef.current);
+            flushIntervalRef.current = null;
+          }
+          if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
+          }
+        }
+      }, 16); // ~60fps for smooth finish
+    } else if (!isStreaming && bufferRef.current.length === 0) {
+      // No buffer, ensure content is displayed
       setDisplayedContent(content);
-      bufferRef.current = [];
       lastContentLengthRef.current = content.length;
 
-      // Clear interval
+      // Clear intervals
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
+      }
+      if (flushIntervalRef.current) {
+        clearInterval(flushIntervalRef.current);
+        flushIntervalRef.current = null;
       }
     }
   }, [isStreaming, content]);
@@ -64,6 +92,10 @@ export function useSmoothStreaming(content: string, isStreaming: boolean) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
+      if (flushIntervalRef.current) {
+        clearInterval(flushIntervalRef.current);
+        flushIntervalRef.current = null;
+      }
     }
   }, [content]);
 
@@ -72,6 +104,9 @@ export function useSmoothStreaming(content: string, isStreaming: boolean) {
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
+      }
+      if (flushIntervalRef.current) {
+        clearInterval(flushIntervalRef.current);
       }
     };
   }, []);

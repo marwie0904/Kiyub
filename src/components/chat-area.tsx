@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useTransition } from "react";
+import { flushSync } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -183,21 +184,11 @@ export function ChatArea({ conversationId, isSidebarCollapsed = false, onStreami
     // Track which conversation we're streaming to
     streamingConversationRef.current = targetConversationId;
 
-    setIsLoading(true);
+    // isLoading is already set to true by onSubmit
     setIsStreaming(false);
 
-    // Add user message to UI
-    const userMsg = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: userMessage.content,
-      createdAt: new Date(),
-      attachments: options.body.attachments,
-    };
-    setMessages(prev => [...prev, userMsg]);
-
-    // Create placeholder for assistant
-    const assistantId = (Date.now() + 1).toString();
+    // Create placeholder for assistant with unique ID
+    const assistantId = `assistant-${Date.now()}`;
     let assistantMsg = {
       id: assistantId,
       role: 'assistant',
@@ -215,12 +206,18 @@ export function ChatArea({ conversationId, isSidebarCollapsed = false, onStreami
     });
 
     try {
+      // Build the user message for the API request
+      const userMsgForApi = {
+        role: userMessage.role,
+        content: userMessage.content,
+      };
+
       // Fetch from /api/chat-v2
       const response = await fetch('/api/chat-v2', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          messages: [...messages, userMsg].map(m => ({ role: m.role, content: m.content })),
+          messages: [...messages, userMsgForApi].map(m => ({ role: m.role, content: m.content })),
           model: options.body.model,
           conversationId: options.body.conversationId,
           attachments: options.body.attachments,
@@ -257,6 +254,9 @@ export function ChatArea({ conversationId, isSidebarCollapsed = false, onStreami
               const text = JSON.parse(line.substring(2));
               fullText += text;
 
+              const timestamp = Date.now();
+              console.log(`🎨 [Frontend] [${timestamp}] Received and displaying chunk: "${text}"`);
+
               // Update global stream state
               const streamState = activeStreams.get(targetConversationId);
               if (streamState) {
@@ -268,6 +268,13 @@ export function ChatArea({ conversationId, isSidebarCollapsed = false, onStreami
               // Mark as streaming once we receive first content chunk
               if (!isStreaming && streamingConversationRef.current === targetConversationId) {
                 setIsStreaming(true);
+              }
+
+              // Update UI immediately after each text chunk - only update content
+              if (streamingConversationRef.current === targetConversationId) {
+                setMessages(prev =>
+                  prev.map(m => (m.id === assistantId ? { ...m, content: fullText } : m))
+                );
               }
             } catch (e) {
               console.warn('Failed to parse chunk:', line);
@@ -287,16 +294,6 @@ export function ChatArea({ conversationId, isSidebarCollapsed = false, onStreami
               fullText += data;
             }
           }
-        }
-
-        // Update content with parsed text
-        assistantMsg = { ...assistantMsg, content: fullText };
-
-        // Only update message UI if we're still on the same conversation
-        if (streamingConversationRef.current === targetConversationId) {
-          setMessages(prev =>
-            prev.map(m => (m.id === assistantId ? assistantMsg : m))
-          );
         }
       }
 
@@ -388,11 +385,14 @@ export function ChatArea({ conversationId, isSidebarCollapsed = false, onStreami
         setMessages(prev => {
           // If we're currently loading/streaming, preserve any optimistic messages at the end
           if (isLoading || isStreaming) {
-            // Find optimistic messages (ones with string IDs instead of Convex IDs)
-            const optimisticMessages = prev.filter(m => typeof m.id === 'string' && !m.id.startsWith('j'));
+            // Find optimistic messages (user/assistant prefixed IDs, not Convex IDs which start with 'j')
+            const optimisticMessages = prev.filter(m =>
+              typeof m.id === 'string' && (m.id.startsWith('user-') || m.id.startsWith('assistant-'))
+            );
 
             // If we have optimistic messages, append them to Convex messages
             if (optimisticMessages.length > 0) {
+              console.log('🔄 [Messages] Preserving optimistic messages:', optimisticMessages.length);
               return [...formattedMessages, ...optimisticMessages];
             }
           }
@@ -497,27 +497,58 @@ export function ChatArea({ conversationId, isSidebarCollapsed = false, onStreami
     e.preventDefault();
     if ((!input.trim() && attachedFiles.length === 0) || !conversationId) return;
 
+    // Capture the message content and files before clearing
+    const messageContent = input || "Analyze these files";
+    const messagesToUpload = [...attachedFiles];
+
+    // Create user message immediately with unique ID
+    const timestamp = Date.now();
+    const userMsg = {
+      id: `user-${timestamp}`,
+      role: 'user' as const,
+      content: messageContent,
+      createdAt: new Date(timestamp),
+      attachments: undefined as any, // Will be updated after upload
+    };
+
+    // Force immediate render using flushSync
+    flushSync(() => {
+      setIsLoading(true);
+      setMessages(prev => [...prev, userMsg]);
+      setInput("");
+      setAttachedFiles([]);
+    });
+
     try {
       let fileAttachments: FileAttachment[] | undefined = undefined;
 
       // Upload files if any are attached
-      if (attachedFiles.length > 0) {
+      if (messagesToUpload.length > 0) {
         setIsProcessingFiles(true);
-        const uploadResult = await uploadFilesToConvex(attachedFiles, generateUploadUrl);
+        const uploadResult = await uploadFilesToConvex(messagesToUpload, generateUploadUrl);
 
         if (!uploadResult.success) {
           alert(uploadResult.error || "Failed to upload files");
+          // Remove the optimistic user message
+          setMessages(prev => prev.filter(m => m.id !== userMsg.id));
           return;
         }
 
         fileAttachments = uploadResult.attachments;
+
+        // Update the user message with attachments
+        setMessages(prev => prev.map(m =>
+          m.id === userMsg.id
+            ? { ...m, attachments: fileAttachments }
+            : m
+        ));
       }
 
       // Send message with attachments
       sendMessage(
         {
           role: "user",
-          content: input || "Analyze these files",
+          content: messageContent,
         },
         {
           body: {
@@ -527,13 +558,11 @@ export function ChatArea({ conversationId, isSidebarCollapsed = false, onStreami
           },
         }
       );
-
-      // Clear input and files
-      setInput("");
-      setAttachedFiles([]);
     } catch (error) {
       console.error("Error sending message:", error);
       alert("Failed to send message");
+      // Remove the optimistic user message on error
+      setMessages(prev => prev.filter(m => m.id !== userMsg.id));
     } finally {
       setIsProcessingFiles(false);
     }

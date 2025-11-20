@@ -272,9 +272,10 @@ export async function POST(req: Request) {
                   fullText += chunk.data;
 
                   // Forward content chunks immediately to frontend
+                  const timestamp = Date.now();
                   const formatted = `0:${JSON.stringify(chunk.data)}\n`;
                   controller.enqueue(encoder.encode(formatted));
-                  console.log(`📤 [API] Streamed chunk: "${chunk.data}"`);
+                  console.log(`📤 [API] [${timestamp}] Forwarded chunk to frontend: "${chunk.data}"`);
                 } else if (chunk.type === 'metadata') {
                   // Store metadata for backend save
                   metadata = chunk.data;
@@ -453,92 +454,103 @@ export async function POST(req: Request) {
       model: selectedModel,
       messages: coreMessages,
       temperature: 0.7,
-      async onFinish({ text, usage }) {
-        console.log("✅ Generation complete, saving to Convex...");
-        console.log("📊 Final text length:", text?.length || 0);
-
-        if (conversationId && text) {
-          // Extract token data from usage
-          const usageData = usage as any;
-          const promptTokens = usageData?.promptTokens ?? 0;
-          const completionTokens = usageData?.completionTokens ?? 0;
-          const totalTokens = usageData?.totalTokens ?? (promptTokens + completionTokens);
-
-          await convex.mutation(api.messages.create, {
-            conversationId: conversationId as Id<"conversations">,
-            content: text,
-            role: "assistant",
-            tokenUsage: {
-              promptTokens,
-              completionTokens,
-              totalTokens,
-            },
-          });
-
-          // Generate title if first exchange
-          const conversation = await convex.query(api.conversations.get, {
-            conversationId: conversationId as Id<"conversations">,
-          });
-
-          if (conversation && conversation.messageCount === 2) {
-            convex
-              .action(api.openai.generateTitle, {
-                conversationId: conversationId as Id<"conversations">,
-              })
-              .catch((err) => console.error("Title generation failed:", err));
-          }
-        }
-
-        if (usage && conversationId) {
-          const usageData = usage as any;
-          const promptToks = usageData?.promptTokens ?? 0;
-          const completionToks = usageData?.completionTokens ?? 0;
-          const totalToks = usageData?.totalTokens ?? (promptToks + completionToks);
-          const costUsd = calculateLLMCost(model || defaultModel, promptToks, completionToks);
-
-          // Track in PostHog
-          await trackLLMCallServer({
-            model: model || defaultModel,
-            provider: providerType,
-            promptTokens: promptToks,
-            completionTokens: completionToks,
-            totalTokens: totalToks,
-            cost: costUsd,
-            latencyMs: Date.now() - startTime,
-            conversationId: conversationId as string,
-            success: true,
-          });
-
-          // Track in Convex aiTracking table
-          await convex.mutation(api.aiTracking.track, {
-            inputTokens: promptToks,
-            outputTokens: completionToks,
-            totalTokens: totalToks,
-            model: model || defaultModel,
-            provider: getProviderForModel(model || defaultModel),
-            usageType: "conversation",
-            costUsd,
-            costPhp: usdToPhp(costUsd),
-            conversationId: conversationId as Id<"conversations">,
-            latencyMs: Date.now() - startTime,
-            success: true,
-          });
-        }
-      },
     });
 
     // Return the stream using AI SDK's data stream format
     // Frontend expects: 0:"text"
     const encoder = new TextEncoder();
+
+    // Capture usage and text for post-stream processing
+    let fullText = '';
+    let finalUsage: any = null;
+
     const customStream = new ReadableStream({
       async start(controller) {
         try {
           for await (const textPart of result.textStream) {
+            // Accumulate full text
+            fullText += textPart;
+
             // Format as AI SDK data stream: 0:"text"\n
             const formatted = `0:${JSON.stringify(textPart)}\n`;
             controller.enqueue(encoder.encode(formatted));
           }
           controller.close();
+
+          // Get usage info after stream completes
+          const streamResult = await result;
+          finalUsage = streamResult.usage;
+
+          console.log("✅ Generation complete, saving to Convex...");
+          console.log("📊 Final text length:", fullText?.length || 0);
+
+          if (conversationId && fullText) {
+            // Extract token data from usage
+            const usageData = finalUsage as any;
+            const promptTokens = usageData?.promptTokens ?? 0;
+            const completionTokens = usageData?.completionTokens ?? 0;
+            const totalTokens = usageData?.totalTokens ?? (promptTokens + completionTokens);
+
+            await convex.mutation(api.messages.create, {
+              conversationId: conversationId as Id<"conversations">,
+              content: fullText,
+              role: "assistant",
+              tokenUsage: {
+                promptTokens,
+                completionTokens,
+                totalTokens,
+              },
+            });
+
+            // Generate title if first exchange
+            const conversation = await convex.query(api.conversations.get, {
+              conversationId: conversationId as Id<"conversations">,
+            });
+
+            if (conversation && conversation.messageCount === 2) {
+              convex
+                .action(api.openai.generateTitle, {
+                  conversationId: conversationId as Id<"conversations">,
+                })
+                .catch((err) => console.error("Title generation failed:", err));
+            }
+          }
+
+          if (finalUsage && conversationId) {
+            const usageData = finalUsage as any;
+            const promptToks = usageData?.promptTokens ?? 0;
+            const completionToks = usageData?.completionTokens ?? 0;
+            const totalToks = usageData?.totalTokens ?? (promptToks + completionToks);
+            const costUsd = calculateLLMCost(model || defaultModel, promptToks, completionToks);
+
+            // Track in PostHog
+            await trackLLMCallServer({
+              model: model || defaultModel,
+              provider: providerType,
+              promptTokens: promptToks,
+              completionTokens: completionToks,
+              totalTokens: totalToks,
+              cost: costUsd,
+              latencyMs: Date.now() - startTime,
+              conversationId: conversationId as string,
+              success: true,
+            });
+
+            // Track in Convex aiTracking table
+            await convex.mutation(api.aiTracking.track, {
+              inputTokens: promptToks,
+              outputTokens: completionToks,
+              totalTokens: totalToks,
+              model: model || defaultModel,
+              provider: getProviderForModel(model || defaultModel),
+              usageType: "conversation",
+              costUsd,
+              costPhp: usdToPhp(costUsd),
+              conversationId: conversationId as Id<"conversations">,
+              latencyMs: Date.now() - startTime,
+              success: true,
+            });
+          }
         } catch (error) {
           controller.error(error);
         }
