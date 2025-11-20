@@ -7,8 +7,9 @@ import { getRandomLoadingWord, getNextLoadingWord } from "@/lib/loading-words";
 interface LoadingWithTextProps {
   size?: "sm" | "md" | "lg";
   speed?: "slow" | "normal" | "fast";
-  variant?: "primary" | "muted" | "accent";
+  variant?: "primary" | "muted" | "accent" | "error";
   className?: string;
+  customText?: string; // Override the rotating word with custom text
 }
 
 export function LoadingWithText({
@@ -16,10 +17,14 @@ export function LoadingWithText({
   speed = "fast",
   variant = "primary",
   className,
+  customText,
 }: LoadingWithTextProps) {
   const [currentWord, setCurrentWord] = useState(() => getRandomLoadingWord());
 
   useEffect(() => {
+    // Skip word rotation if custom text is provided
+    if (customText) return;
+
     // Random interval between 3-5 seconds (3000-5000ms)
     const getRandomInterval = () => Math.floor(Math.random() * 2000) + 3000;
 
@@ -34,13 +39,16 @@ export function LoadingWithText({
     }, getRandomInterval());
 
     return () => clearTimeout(timeoutId);
-  }, []);
+  }, [customText]);
+
+  const displayText = customText || currentWord;
+  const textColorClass = variant === "error" ? "text-red-600 dark:text-red-500" : "text-primary";
 
   return (
     <div className={`flex items-center gap-3 ${className}`}>
       <CubeLoader size={size} speed={speed} variant={variant} />
-      <span className="text-sm text-primary font-medium animate-in fade-in duration-300">
-        {currentWord}...
+      <span className={`text-sm font-medium animate-in fade-in duration-300 ${textColorClass}`}>
+        {displayText}
       </span>
     </div>
   );

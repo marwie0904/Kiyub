@@ -247,48 +247,101 @@ export async function POST(req: Request) {
         const customStream = new ReadableStream({
           async start(controller) {
             try {
+              const MAX_RETRIES = 3;
+              let retryCount = 0;
+              let lastError: Error | null = null;
+
               // Choose streaming function based on provider
               const streamFunction = providerType === "cerebras"
                 ? streamCerebrasWebSearch
                 : streamGMIWebSearch;
 
-              const stream = streamFunction(
-                coreMessages.map(msg => ({
-                  role: msg.role,
-                  content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)
-                })),
-                {
-                  temperature: 0.3,
-                  maxTokens: 2000,
-                  maxIterations: 4,
-                  maxToolCalls,
-                  reasoning: reasoningLevel
+              while (retryCount < MAX_RETRIES) {
+                try {
+                  // Send retry status if this is a retry attempt
+                if (retryCount > 0) {
+                  const retryMsg = `e:${JSON.stringify({ type: 'retry', attempt: retryCount })}\n`;
+                  controller.enqueue(encoder.encode(retryMsg));
+                  console.log(`🔄 [API] Retry attempt ${retryCount}/${MAX_RETRIES}`);
                 }
-              );
 
-              for await (const chunk of stream) {
-                if (chunk.type === 'content') {
-                  // Accumulate full text
-                  fullText += chunk.data;
+                // 🧪 TEST MODE: Simulate errors for the first 2 attempts
+                // Uncomment the lines below to test error handling
+                // if (retryCount < 2) {
+                //   throw new Error('Simulated error for testing retry logic');
+                // }
 
-                  // Forward content chunks immediately to frontend
-                  const timestamp = Date.now();
-                  const formatted = `0:${JSON.stringify(chunk.data)}\n`;
-                  controller.enqueue(encoder.encode(formatted));
-                  console.log(`📤 [API] [${timestamp}] Forwarded chunk to frontend: "${chunk.data}"`);
-                } else if (chunk.type === 'metadata') {
-                  // Store metadata for backend save
-                  metadata = chunk.data;
+                console.log(`🔵 [API] Starting ${providerType} stream function...`);
 
-                  // Send metadata as a special message type
-                  const metadataMsg = `d:${JSON.stringify(chunk.data)}\n`;
-                  controller.enqueue(encoder.encode(metadataMsg));
-                  console.log('📊 [API] Sent metadata to client');
+                const stream = streamFunction(
+                  coreMessages.map(msg => ({
+                    role: msg.role,
+                    content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)
+                  })),
+                  {
+                    temperature: 0.3,
+                    maxTokens: 2000,
+                    maxIterations: 4,
+                    maxToolCalls,
+                    reasoning: reasoningLevel
+                  }
+                );
+
+                console.log(`🔵 [API] Stream function initialized, starting to read chunks...`);
+                let apiChunkCount = 0;
+
+                for await (const chunk of stream) {
+                  apiChunkCount++;
+                  console.log(`🔵 [API] Received chunk #${apiChunkCount} from ${providerType} stream`);
+
+                  if (chunk.type === 'content') {
+                    // Accumulate full text
+                    fullText += chunk.data;
+
+                    // Forward content chunks immediately to frontend
+                    console.log(`🟢 [API] Chunk #${apiChunkCount} is content, forwarding to frontend`);
+                    const formatted = `0:${JSON.stringify(chunk.data)}\n`;
+                    controller.enqueue(encoder.encode(formatted));
+                    console.log(`✅ [API] Chunk #${apiChunkCount} forwarded successfully`);
+                  } else if (chunk.type === 'metadata') {
+                    // Store metadata for backend save
+                    console.log(`🔵 [API] Chunk #${apiChunkCount} is metadata, storing for backend save`);
+                    metadata = chunk.data;
+
+                    // Send metadata as a special message type
+                    const metadataMsg = `d:${JSON.stringify(chunk.data)}\n`;
+                    controller.enqueue(encoder.encode(metadataMsg));
+                    console.log('📊 [API] Metadata sent to client');
+                  }
+                }
+
+                console.log(`🏁 [API] Stream loop completed - Total chunks processed: ${apiChunkCount}`);
+
+                  // Success - break out of retry loop
+                  break;
+                } catch (error) {
+                  lastError = error as Error;
+                  retryCount++;
+                  console.error(`❌ [API] Error on attempt ${retryCount}:`, error);
+
+                  // Send error status to frontend
+                  const errorMsg = `e:${JSON.stringify({ type: 'error', attempt: retryCount, maxRetries: MAX_RETRIES })}\n`;
+                  controller.enqueue(encoder.encode(errorMsg));
+
+                  // If we've exhausted retries, throw the error
+                  if (retryCount >= MAX_RETRIES) {
+                    throw new Error(`Failed after ${MAX_RETRIES} retries: ${lastError?.message || 'Unknown error'}`);
+                  }
+
+                  // Wait before retrying (exponential backoff)
+                  await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
                 }
               }
 
-              console.log('✅ [API] Stream completed');
+              console.log('✅ [API] Stream completed successfully');
+              console.log('🔵 [API] Closing stream controller...');
               controller.close();
+              console.log('✅ [API] Stream controller closed');
 
               // Save assistant message to database BEFORE triggering title generation
               if (conversationId && fullText && metadata) {

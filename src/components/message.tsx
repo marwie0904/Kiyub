@@ -25,7 +25,6 @@ import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
 import { TextSelectionHandler } from "./text-selection-handler";
 import { FlagFeedback } from "./flag-feedback";
-import { useSmoothStreaming } from "@/hooks/use-smooth-streaming";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
@@ -185,6 +184,8 @@ export const Message = memo(function Message({
   tokenUsage,
   reasoningDetails,
 }: MessageProps) {
+  console.log(`🟠 [Message ${id}] Render - role: ${role}, isStreaming: ${isStreaming}, content length: ${content?.length || 0}`);
+
   const [showSources, setShowSources] = useState(true);
   const [showReasoning, setShowReasoning] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -332,19 +333,15 @@ export const Message = memo(function Message({
     [parts, searchMetadata]
   );
 
-  // Apply smooth streaming for assistant messages
-  const streamedContent = useSmoothStreaming(rawContent, isStreaming);
-
   // Convert LaTeX delimiters from \( \) and \[ \] to $ $$ for remark-math
-  // Memoize this transformation
+  // Display content directly without smoothing - streaming is already smooth from provider
   const displayContent = useMemo(() => {
-    const contentToProcess = role === "assistant" ? streamedContent : rawContent;
-    return contentToProcess
+    return rawContent
       .replace(/\\\(/g, '$')
       .replace(/\\\)/g, '$')
       .replace(/\\\[/g, '$$')
       .replace(/\\\]/g, '$$');
-  }, [role, streamedContent, rawContent]);
+  }, [rawContent]);
 
   // Extract user question from conversation context (for flag feedback)
   const userQuestion = useMemo(() => {

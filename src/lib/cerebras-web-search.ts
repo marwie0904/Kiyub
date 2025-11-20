@@ -546,14 +546,22 @@ MINIMIZE TOOL CALLS:
 
     // Process stream chunks - forward content immediately
     let chunkCount = 0;
+    console.log(`🔵 [Cerebras Stream] Starting to read from Cerebras API stream...`);
+
     for await (const chunk of stream) {
       chunkCount++;
+      console.log(`🔵 [Cerebras Stream] Chunk #${chunkCount} received from API`);
+
       const delta = chunk.choices[0]?.delta;
 
-      if (!delta) continue;
+      if (!delta) {
+        console.log(`⚠️ [Cerebras Stream] Chunk #${chunkCount} has no delta, skipping`);
+        continue;
+      }
 
       // Handle tool calls in stream (accumulate, don't forward)
       if (delta.tool_calls) {
+        console.log(`🔵 [Cerebras Stream] Chunk #${chunkCount} contains tool calls`);
         for (const toolCallDelta of delta.tool_calls) {
           const index = toolCallDelta.index;
 
@@ -577,27 +585,29 @@ MINIMIZE TOOL CALLS:
 
       // Handle content streaming - YIELD immediately to frontend
       if (delta.content) {
-        const timestamp = Date.now();
-        console.log(`📝 [Cerebras Stream] [${timestamp}] Yielding content chunk: "${delta.content}"`);
+        console.log(`🟢 [Cerebras Stream] Chunk #${chunkCount} contains content, yielding to API route`);
         yield { type: 'content', data: delta.content };
         assistantMessage.content += delta.content;
+        console.log(`✅ [Cerebras Stream] Chunk #${chunkCount} yielded successfully`);
       }
 
       // Handle reasoning (if available) - accumulate but don't forward
       if ((delta as any).reasoning) {
+        console.log(`🔵 [Cerebras Stream] Chunk #${chunkCount} contains reasoning`);
         if (!assistantMessage.reasoning) assistantMessage.reasoning = '';
         assistantMessage.reasoning += (delta as any).reasoning;
       }
 
       // Accumulate usage from final chunk
       if (chunk.usage) {
+        console.log(`🔵 [Cerebras Stream] Chunk #${chunkCount} contains usage data`);
         totalUsage.promptTokens = chunk.usage.prompt_tokens || 0;
         totalUsage.completionTokens = chunk.usage.completion_tokens || 0;
         totalUsage.totalTokens = chunk.usage.total_tokens || 0;
       }
     }
 
-    console.log(`✅ [Cerebras Stream] Stream iteration complete - chunks: ${chunkCount}`);
+    console.log(`🏁 [Cerebras Stream] Stream iteration complete - Total chunks: ${chunkCount}`);
 
     // Add assistant message to conversation
     conversationMessages.push(assistantMessage);

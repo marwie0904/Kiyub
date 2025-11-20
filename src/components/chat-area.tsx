@@ -111,6 +111,8 @@ export function ChatArea({ conversationId, isSidebarCollapsed = false, onStreami
   const [messages, setMessages] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [retryAttempt, setRetryAttempt] = useState(0);
+  const [hasError, setHasError] = useState(false);
 
   // Track which conversation is currently streaming to prevent message leakage
   const streamingConversationRef = useRef<Id<"conversations"> | null>(null);
@@ -231,31 +233,39 @@ export function ChatArea({ conversationId, isSidebarCollapsed = false, onStreami
       if (!reader) return;
 
       let fullText = '';
-      let chunkCount = 0;
+      let frontendChunkCount = 0;
       let metadata: any = null;
 
-      console.log('🚀 [Stream] Starting stream reading...');
+      console.log('🔵 [Frontend] Starting to read from API stream...');
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) {
-          console.log('✅ [Stream] Stream completed');
+          console.log('🏁 [Frontend] Stream reader done signal received');
           break;
         }
 
+        console.log(`🔵 [Frontend] Received data from API`);
         const chunk = decoder.decode(value, { stream: true });
-        chunkCount++;
 
-        // Parse AI SDK stream format: 0:"text", d:{metadata}
+        // Parse AI SDK stream format: 0:"text", d:{metadata}, e:{error/retry}
         const lines = chunk.split('\n').filter(line => line.trim());
+        console.log(`🔵 [Frontend] Decoded ${lines.length} lines from chunk`);
+
         for (const line of lines) {
           if (line.startsWith('0:')) {
             try {
+              frontendChunkCount++;
               const text = JSON.parse(line.substring(2));
               fullText += text;
 
-              const timestamp = Date.now();
-              console.log(`🎨 [Frontend] [${timestamp}] Received and displaying chunk: "${text}"`);
+              console.log(`🟢 [Frontend] Content chunk #${frontendChunkCount} received, updating UI`);
+
+              // Clear error state on successful content
+              if (hasError && streamingConversationRef.current === targetConversationId) {
+                setHasError(false);
+                setRetryAttempt(0);
+              }
 
               // Update global stream state
               const streamState = activeStreams.get(targetConversationId);
@@ -267,17 +277,38 @@ export function ChatArea({ conversationId, isSidebarCollapsed = false, onStreami
 
               // Mark as streaming once we receive first content chunk
               if (!isStreaming && streamingConversationRef.current === targetConversationId) {
+                console.log('🔵 [Frontend] Setting isStreaming to true');
                 setIsStreaming(true);
               }
 
               // Update UI immediately after each text chunk - only update content
               if (streamingConversationRef.current === targetConversationId) {
+                console.log(`🔵 [Frontend] Calling setMessages for chunk #${frontendChunkCount}`);
                 setMessages(prev =>
                   prev.map(m => (m.id === assistantId ? { ...m, content: fullText } : m))
                 );
+                console.log(`✅ [Frontend] UI updated with chunk #${frontendChunkCount}`);
               }
             } catch (e) {
               console.warn('Failed to parse chunk:', line);
+            }
+          } else if (line.startsWith('e:')) {
+            // Handle error/retry status
+            try {
+              const errorData = JSON.parse(line.substring(2));
+              console.log('⚠️ [Stream] Received error/retry:', errorData);
+
+              if (streamingConversationRef.current === targetConversationId) {
+                if (errorData.type === 'error') {
+                  setHasError(true);
+                  setRetryAttempt(errorData.attempt || 0);
+                } else if (errorData.type === 'retry') {
+                  setHasError(false);
+                  setRetryAttempt(errorData.attempt || 0);
+                }
+              }
+            } catch (e) {
+              console.warn('Failed to parse error data:', line);
             }
           } else if (line.startsWith('d:')) {
             // Handle metadata (usage, search sources, etc.)
@@ -297,21 +328,36 @@ export function ChatArea({ conversationId, isSidebarCollapsed = false, onStreami
         }
       }
 
-      console.log('✅ [Stream] Streaming complete');
+      console.log(`🏁 [Frontend] Stream reading complete - Total content chunks: ${frontendChunkCount}`);
 
       // NOTE: Message saving now happens on the backend (API route) instead of frontend
       // This ensures the message is saved before title generation is triggered
       console.log('ℹ️ [Stream] Message already saved by backend API route');
     } catch (error) {
       console.error('Streaming error:', error);
+
+      // Set final error state if max retries exceeded
+      if (streamingConversationRef.current === targetConversationId) {
+        setHasError(true);
+      }
     } finally {
+      console.log(`🔴 [Frontend] Finally block - cleaning up stream`);
+
       // Clean up global stream state
       activeStreams.delete(targetConversationId);
+      console.log(`🔴 [Frontend] Deleted activeStream for conversation ${targetConversationId}`);
 
       // Only clear streaming state if we're still on the same conversation
       if (streamingConversationRef.current === targetConversationId) {
+        console.log('🔴 [Frontend] Stream ended, clearing loading/streaming state');
+        console.log(`🔴 [Frontend] Setting isLoading: true -> false`);
         setIsLoading(false);
+        console.log(`🔴 [Frontend] Setting isStreaming: true -> false`);
         setIsStreaming(false);
+        console.log(`🔴 [Frontend] All state cleared`);
+        // Reset error states
+        setHasError(false);
+        setRetryAttempt(0);
       }
     }
   };
@@ -334,13 +380,17 @@ export function ChatArea({ conversationId, isSidebarCollapsed = false, onStreami
 
   // Load conversation history when conversationId changes
   useEffect(() => {
+    console.log(`🟡 [Messages Effect] Running - conversationId: ${conversationId}, isLoading: ${isLoading}, isStreaming: ${isStreaming}`);
+
     if (!conversationId) {
+      console.log(`🟡 [Messages Effect] No conversationId, clearing messages`);
       setMessages([]);
       return;
     }
 
     // Check if there's an active stream for this conversation
     const activeStream = activeStreams.get(conversationId);
+    console.log(`🟡 [Messages Effect] Active stream exists: ${!!activeStream}`);
 
     if (activeStream) {
       // Restore the streaming message along with conversation history
@@ -397,11 +447,26 @@ export function ChatArea({ conversationId, isSidebarCollapsed = false, onStreami
             }
           }
 
+          // Check if content actually changed to prevent re-render flash
+          if (prev.length === formattedMessages.length) {
+            const lastPrev = prev[prev.length - 1];
+            const lastFormatted = formattedMessages[formattedMessages.length - 1];
+
+            console.log(`🟡 [Messages Effect] Comparing last messages - prev length: ${lastPrev?.content?.length || 0}, formatted length: ${lastFormatted?.content?.length || 0}`);
+
+            // If the last message content is the same, don't update
+            if (lastPrev && lastFormatted && lastPrev.content === lastFormatted.content) {
+              console.log('🟢 [Messages Effect] Content unchanged, skipping update to prevent flash');
+              return prev;
+            }
+          }
+
+          console.log(`🟡 [Messages Effect] Updating messages - count: ${formattedMessages.length}`);
           return formattedMessages;
         });
       }
     }
-  }, [convexMessages, conversationId, isLoading, isStreaming]);
+  }, [convexMessages, conversationId]); // Removed isLoading, isStreaming to prevent re-run when stream ends
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -744,7 +809,7 @@ export function ChatArea({ conversationId, isSidebarCollapsed = false, onStreami
                   conversationContext={messages}
                   conversationId={conversationId || undefined}
                   model={selectedModel.value}
-                  isStreaming={isLoading && index === messages.length - 1}
+                  isStreaming={isStreaming && index === messages.length - 1}
                   attachments={(msg as any).attachments}
                   searchMetadata={(msg as any).searchMetadata}
                   tokenUsage={(msg as any).tokenUsage}
@@ -754,7 +819,22 @@ export function ChatArea({ conversationId, isSidebarCollapsed = false, onStreami
             </>
           )}
           {isLoading && !isStreaming && (
-            <LoadingWithText size="sm" speed="fast" />
+            <>
+              {hasError && retryAttempt > 0 && retryAttempt < 3 ? (
+                <LoadingWithText
+                  size="sm"
+                  speed="fast"
+                  variant="error"
+                  customText={`Freire is Experiencing Errors, Retrying [${retryAttempt}]`}
+                />
+              ) : hasError && retryAttempt >= 3 ? (
+                <div className="text-red-600 dark:text-red-500 text-sm font-medium">
+                  Error: could not connect to providers
+                </div>
+              ) : (
+                <LoadingWithText size="sm" speed="fast" />
+              )}
+            </>
           )}
           <div ref={scrollRef} />
         </div>
