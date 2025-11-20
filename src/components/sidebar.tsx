@@ -39,6 +39,7 @@ import {
   Bug,
   Lightbulb,
   Code,
+  LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQuery, useMutation } from "convex/react";
@@ -54,6 +55,8 @@ import { BugReportModal } from "@/components/bug-report/bug-report-modal";
 import { FeatureRequestModal } from "@/components/feature-request/feature-request-modal";
 import { CubeLoader } from "@/components/ui/cube-loader";
 import { AnimatedTitle } from "@/components/ui/animated-title";
+import { useAuthActions } from "@convex-dev/auth/react";
+import { toast } from "sonner";
 
 type ActiveView = "chats" | "projects" | "tests" | "canvas";
 
@@ -83,6 +86,7 @@ export function Sidebar({
 }: SidebarProps) {
   const router = useRouter();
   const { theme, setTheme } = useTheme();
+  const { signOut } = useAuthActions();
   // Always keep sidebar on chats view, regardless of page
   const activeView = "chats";
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
@@ -198,6 +202,17 @@ export function Sidebar({
     router.push(url);
   };
 
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      toast.success("Signed out successfully!");
+      router.push("/auth/sign-in");
+    } catch (error) {
+      toast.error("Failed to sign out. Please try again.");
+      console.error("Sign out error:", error);
+    }
+  };
+
   const formatTimestamp = (timestamp: number) => {
     const now = Date.now();
     const diff = now - timestamp;
@@ -244,29 +259,8 @@ export function Sidebar({
           {/* Daily Usage Circle */}
           <DailyUsageCircle />
 
-          {/* Theme Toggle */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-black/10 dark:hover:bg-white/5">
-                <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-                <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-                <span className="sr-only">Toggle theme</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setTheme("light")}>
-                Light
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setTheme("dark")}>
-                Dark
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setTheme("system")}>
-                System
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
           <span className="px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide rounded bg-primary/10 text-primary border border-primary/20">
-            Beta
+            Alpha
           </span>
         </div>
       </div>
@@ -606,9 +600,23 @@ export function Sidebar({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuItem>Settings</DropdownMenuItem>
-            <DropdownMenuItem>Support</DropdownMenuItem>
-            <DropdownMenuItem>Sign out</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setTheme("light")}>
+              <Sun className="mr-2 h-4 w-4" />
+              Light
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setTheme("dark")}>
+              <Moon className="mr-2 h-4 w-4" />
+              Dark
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setTheme("system")}>
+              <Layout className="mr-2 h-4 w-4" />
+              System
+            </DropdownMenuItem>
+            <div className="my-1 h-px bg-border" />
+            <DropdownMenuItem onClick={handleSignOut} className="text-red-500 focus:text-red-500">
+              <LogOut className="mr-2 h-4 w-4" />
+              Sign out
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

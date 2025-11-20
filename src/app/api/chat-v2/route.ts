@@ -14,8 +14,6 @@ import { chatWithGMIWebSearch, streamGMIWebSearch } from "@/lib/gmi-web-search";
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 30;
 
-const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
-
 // Helper function to convert UIMessages to CoreMessages
 function convertMessages(messages: any[]) {
   return messages.map((msg: any) => {
@@ -41,6 +39,23 @@ function convertMessages(messages: any[]) {
 }
 
 export async function POST(req: Request) {
+  // Initialize convex client outside try block so it's accessible in catch
+  const authHeader = req.headers.get("Authorization");
+  const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+
+  console.log("🔐 Auth header present:", !!authHeader);
+
+  if (authHeader) {
+    // Remove "Bearer " prefix if present
+    const token = authHeader.startsWith("Bearer ")
+      ? authHeader.substring(7)
+      : authHeader;
+    console.log("🔑 Setting auth token on convex client");
+    convex.setAuth(token);
+  } else {
+    console.warn("⚠️ No Authorization header found!");
+  }
+
   try {
     const { messages, model, conversationId, attachments, useHighReasoning } = await req.json();
 

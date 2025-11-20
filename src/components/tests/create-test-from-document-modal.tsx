@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
+import { useAuthToken } from "@convex-dev/auth/react";
 import {
   Dialog,
   DialogContent,
@@ -45,6 +46,7 @@ export function CreateTestFromDocumentModal({
   onClose,
   onTestCreated,
 }: CreateTestFromDocumentModalProps) {
+  const authToken = useAuthToken();
   const { fileTypeError, validateFiles } = useFileValidation();
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [testFormat, setTestFormat] = useState<TestFormat>("multiple_choice");
@@ -120,6 +122,7 @@ export function CreateTestFromDocumentModal({
 
       const response = await fetch("/api/generate-test-from-document", {
         method: "POST",
+        headers: authToken ? { "Authorization": `Bearer ${authToken}` } : {},
         body: formData,
       });
 

@@ -346,4 +346,15 @@ export default defineSchema({
     .index("by_user", ["userId", "createdAt"])
     .index("by_created", ["createdAt"])
     .index("by_conversation", ["conversationId", "createdAt"]),
+
+  waitlist: defineTable({
+    name: v.string(),
+    email: v.string(),
+    gradeLevel: v.optional(v.string()),
+    interestedFeature: v.optional(v.string()),
+
+    createdAt: v.number(),
+  })
+    .index("by_email", ["email"])
+    .index("by_created", ["createdAt"]),
 });

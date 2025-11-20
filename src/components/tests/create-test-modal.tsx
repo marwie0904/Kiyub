@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Id } from "../../../convex/_generated/dataModel";
+import { useAuthToken } from "@convex-dev/auth/react";
 import {
   Dialog,
   DialogContent,
@@ -28,6 +29,7 @@ export function CreateTestModal({
   conversationId,
   onTestCreated,
 }: CreateTestModalProps) {
+  const authToken = useAuthToken();
   const [questionCount, setQuestionCount] = useState(10);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState("");
@@ -60,7 +62,10 @@ export function CreateTestModal({
 
       const response = await fetch("/api/generate-test", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(authToken ? { "Authorization": `Bearer ${authToken}` } : {}),
+        },
         body: JSON.stringify({
           conversationId,
           testTypes,

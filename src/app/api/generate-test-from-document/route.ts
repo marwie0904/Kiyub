@@ -8,8 +8,6 @@ import { trackAIUsage } from "@/lib/tracking-helper";
 // Allow API calls up to 60 seconds
 export const maxDuration = 60;
 
-const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
-
 // Helper function to extract JSON from various formats
 function extractJSON(text: string): any {
   // First, try direct parsing
@@ -43,6 +41,17 @@ function extractJSON(text: string): any {
 
 export async function POST(req: Request) {
   const startTime = Date.now();
+
+  // Initialize convex client with auth token from request
+  const authHeader = req.headers.get("Authorization");
+  const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+
+  if (authHeader) {
+    const token = authHeader.startsWith("Bearer ")
+      ? authHeader.substring(7)
+      : authHeader;
+    convex.setAuth(token);
+  }
 
   try {
     const formData = await req.formData();

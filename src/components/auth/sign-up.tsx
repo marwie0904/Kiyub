@@ -10,6 +10,8 @@ import { CubeLoader } from "@/components/ui/cube-loader";
 
 export function SignUp() {
   const { signIn } = useAuthActions();
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -17,6 +19,11 @@ export function SignUp() {
 
   const handlePasswordSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!firstName.trim() || !lastName.trim()) {
+      toast.error("Please enter your first and last name");
+      return;
+    }
 
     if (password !== confirmPassword) {
       toast.error("Passwords do not match");
@@ -31,7 +38,12 @@ export function SignUp() {
     setIsLoading(true);
 
     try {
-      await signIn("password", { email, password, flow: "signUp" });
+      await signIn("password", {
+        email,
+        password,
+        flow: "signUp",
+        name: `${firstName} ${lastName}`.trim()
+      });
       toast.success("Account created successfully!");
     } catch (error) {
       toast.error("Failed to create account. Email may already be in use.");
@@ -91,6 +103,34 @@ export function SignUp() {
           </div>
 
           <form onSubmit={handlePasswordSignUp} className="space-y-6">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="firstName">First Name</Label>
+                <Input
+                  id="firstName"
+                  type="text"
+                  placeholder="John"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  required
+                  disabled={isLoading}
+                  className="h-12"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="lastName">Last Name</Label>
+                <Input
+                  id="lastName"
+                  type="text"
+                  placeholder="Doe"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  required
+                  disabled={isLoading}
+                  className="h-12"
+                />
+              </div>
+            </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -136,13 +176,6 @@ export function SignUp() {
               {isLoading ? "Creating account..." : "Create Account"}
             </Button>
           </form>
-
-          <p className="text-center text-sm text-muted-foreground">
-            Already have an account?{" "}
-            <a href="/auth/sign-in" className="text-primary hover:underline font-medium">
-              Sign in
-            </a>
-          </p>
         </div>
       </div>
     </div>

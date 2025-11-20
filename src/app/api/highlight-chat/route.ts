@@ -10,8 +10,6 @@ import { getProviderForModel } from "@/lib/provider-helper";
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 30;
 
-const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
-
 // Helper function to convert UIMessages to CoreMessages
 function convertMessages(messages: any[]) {
   return messages.map((msg: any) => {
@@ -38,6 +36,17 @@ function convertMessages(messages: any[]) {
 
 export async function POST(req: Request) {
   const startTime = Date.now();
+
+  // Initialize convex client with auth token from request
+  const authHeader = req.headers.get("Authorization");
+  const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+
+  if (authHeader) {
+    const token = authHeader.startsWith("Bearer ")
+      ? authHeader.substring(7)
+      : authHeader;
+    convex.setAuth(token);
+  }
 
   try {
     const { selectedText, conversationContext, userQuestion, model } =

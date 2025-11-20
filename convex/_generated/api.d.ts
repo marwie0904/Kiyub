@@ -30,6 +30,7 @@ import type * as responseFeedback from "../responseFeedback.js";
 import type * as testResponses from "../testResponses.js";
 import type * as tests from "../tests.js";
 import type * as users from "../users.js";
+import type * as waitlist from "../waitlist.js";
 
 import type {
   ApiFromModules,
@@ -60,6 +61,7 @@ declare const fullApi: ApiFromModules<{
   testResponses: typeof testResponses;
   tests: typeof tests;
   users: typeof users;
+  waitlist: typeof waitlist;
 }>;
 
 /**

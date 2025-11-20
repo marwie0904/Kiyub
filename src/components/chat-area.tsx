@@ -30,6 +30,7 @@ import { CubeLoader } from "@/components/ui/cube-loader";
 import { AnimatedTitle } from "@/components/ui/animated-title";
 import { ChatBox } from "@/components/ui/chat-box";
 import { useQuery, useMutation, useConvex } from "convex/react";
+import { useAuthToken } from "@convex-dev/auth/react";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
 import { uploadFilesToConvex, FileAttachment } from "@/lib/upload-files";
@@ -53,6 +54,7 @@ interface ChatAreaProps {
 
 export function ChatArea({ conversationId, isSidebarCollapsed = false, onStreamingChange }: ChatAreaProps) {
   const convex = useConvex();
+  const authToken = useAuthToken();
   const { fileTypeError, validateFiles } = useFileValidation();
   const [selectedModel, setSelectedModel] = useState(MODEL_OPTIONS[0]);
   const [input, setInput] = useState("");
@@ -217,7 +219,10 @@ export function ChatArea({ conversationId, isSidebarCollapsed = false, onStreami
       // Fetch from /api/chat-v2
       const response = await fetch('/api/chat-v2', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {})
+        },
         body: JSON.stringify({
           messages: [...messages, userMsgForApi].map(m => ({ role: m.role, content: m.content })),
           model: options.body.model,

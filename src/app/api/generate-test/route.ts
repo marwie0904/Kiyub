@@ -10,8 +10,6 @@ import { getProviderForModel } from "@/lib/provider-helper";
 // Allow API calls up to 60 seconds
 export const maxDuration = 60;
 
-const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
-
 interface GenerateTestRequest {
   conversationId: string;
   testTypes: string[];
@@ -19,6 +17,7 @@ interface GenerateTestRequest {
 }
 
 async function generateTestInBackground(
+  convex: ConvexHttpClient,
   conversationId: Id<"conversations">,
   testId: Id<"tests">,
   testTypes: string[],
@@ -387,6 +386,17 @@ Output valid JSON only, no additional text or formatting.`;
 export async function POST(req: Request) {
   const startTime = Date.now();
 
+  // Initialize convex client with auth token from request
+  const authHeader = req.headers.get("Authorization");
+  const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+
+  if (authHeader) {
+    const token = authHeader.startsWith("Bearer ")
+      ? authHeader.substring(7)
+      : authHeader;
+    convex.setAuth(token);
+  }
+
   try {
     const {
       conversationId,
@@ -440,6 +450,7 @@ export async function POST(req: Request) {
     (async () => {
       try {
         await generateTestInBackground(
+          convex,
           conversationId as Id<"conversations">,
           placeholderTestId as Id<"tests">,
           testTypes,

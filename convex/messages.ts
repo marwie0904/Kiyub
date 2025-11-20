@@ -12,7 +12,9 @@ export const getAll = query({
     const user = await getCurrentUserOrThrow(ctx);
     const conversation = await ctx.db.get(args.conversationId);
 
-    if (!conversation) throw new Error("Conversation not found");
+    // Return empty array if conversation doesn't exist yet (race condition)
+    if (!conversation) return [];
+
     if (conversation.userId !== user._id) {
       throw new Error("Unauthorized access to conversation");
     }
@@ -34,7 +36,16 @@ export const getOutputTokenCount = query({
     const user = await getCurrentUserOrThrow(ctx);
     const conversation = await ctx.db.get(args.conversationId);
 
-    if (!conversation) throw new Error("Conversation not found");
+    // Return default values if conversation doesn't exist yet (race condition)
+    if (!conversation) {
+      return {
+        totalOutputTokens: 0,
+        limit: OUTPUT_TOKEN_LIMIT,
+        isLimitReached: false,
+        remainingTokens: OUTPUT_TOKEN_LIMIT,
+      };
+    }
+
     if (conversation.userId !== user._id) {
       throw new Error("Unauthorized access to conversation");
     }

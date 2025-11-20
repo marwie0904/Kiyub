@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useAuthToken } from "@convex-dev/auth/react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { X, Send, Plus } from "lucide-react";
@@ -36,6 +37,7 @@ export function CanvasHighlightPopup({
   position,
   onCreateCard,
 }: CanvasHighlightPopupProps) {
+  const authToken = useAuthToken();
   const [messages, setMessages] = useState<ChatMessage[]>([
     { role: "user", content: initialQuestion },
   ]);
@@ -112,7 +114,10 @@ export function CanvasHighlightPopup({
     try {
       const response = await fetch("/api/highlight-chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(authToken ? { "Authorization": `Bearer ${authToken}` } : {}),
+        },
         body: JSON.stringify({
           selectedText,
           conversationContext,

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useAuthToken } from "@convex-dev/auth/react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { X, Send } from "lucide-react";
@@ -34,6 +35,7 @@ export function HighlightChatPopup({
   onClose,
   position,
 }: HighlightChatPopupProps) {
+  const authToken = useAuthToken();
   const [messages, setMessages] = useState<ChatMessage[]>([
     { role: "user", content: initialQuestion },
   ]);
@@ -107,7 +109,10 @@ export function HighlightChatPopup({
     try {
       const response = await fetch("/api/highlight-chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(authToken ? { "Authorization": `Bearer ${authToken}` } : {}),
+        },
         body: JSON.stringify({
           selectedText,
           conversationContext,

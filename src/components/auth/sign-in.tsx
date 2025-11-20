@@ -75,7 +75,7 @@ export function SignIn() {
             <div className="flex items-center gap-3">
               <h2 className="text-3xl font-bold">Sign in</h2>
               <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-primary/20 text-primary border border-primary/30">
-                BETA
+                ALPHA
               </span>
             </div>
           </div>
@@ -111,13 +111,6 @@ export function SignIn() {
               {isLoading ? "Signing in..." : "Sign In"}
             </Button>
           </form>
-
-          <p className="text-center text-sm text-muted-foreground">
-            Don&apos;t have an account?{" "}
-            <a href="/auth/sign-up" className="text-primary hover:underline font-medium">
-              Sign up
-            </a>
-          </p>
         </div>
       </div>
     </div>
