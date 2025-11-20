@@ -9,6 +9,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Menu, PanelLeft, Settings } from "lucide-react";
 import { Id } from "../../convex/_generated/dataModel";
+import { ProtectedLayout } from "@/components/auth/protected-layout";
 
 export default function Home() {
   const searchParams = useSearchParams();
@@ -54,20 +55,21 @@ export default function Home() {
   // };
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      {/* Desktop Sidebar */}
-      <aside className={`hidden md:block transition-all duration-300 ${isSidebarCollapsed ? 'w-0' : 'w-[280px]'}`}>
-        <div className={`transition-all duration-300 ${isSidebarCollapsed ? 'opacity-0 -translate-x-full' : 'opacity-100 translate-x-0'}`}>
-          <Sidebar
-            activeConversationId={activeConversationId}
-            onSelectConversation={handleSelectConversation}
-            onNewChat={handleNewChat}
-            onToggleCollapse={toggleSidebar}
-            isCollapsed={isSidebarCollapsed}
-            streamingConversationId={streamingConversationId}
-          />
-        </div>
-      </aside>
+    <ProtectedLayout>
+      <div className="flex h-screen overflow-hidden">
+        {/* Desktop Sidebar */}
+        <aside className={`hidden md:block transition-all duration-300 ${isSidebarCollapsed ? 'w-0' : 'w-[280px]'}`}>
+          <div className={`transition-all duration-300 ${isSidebarCollapsed ? 'opacity-0 -translate-x-full' : 'opacity-100 translate-x-0'}`}>
+            <Sidebar
+              activeConversationId={activeConversationId}
+              onSelectConversation={handleSelectConversation}
+              onNewChat={handleNewChat}
+              onToggleCollapse={toggleSidebar}
+              isCollapsed={isSidebarCollapsed}
+              streamingConversationId={streamingConversationId}
+            />
+          </div>
+        </aside>
 
       {/* Mobile Sidebar */}
       <Sheet>
@@ -124,5 +126,6 @@ export default function Home() {
         </aside>
       )} */}
     </div>
+    </ProtectedLayout>
   );
 }

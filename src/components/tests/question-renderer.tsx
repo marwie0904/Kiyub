@@ -7,6 +7,11 @@ import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Question } from "./test-display-modal";
+import ReactMarkdown from "react-markdown";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+import remarkGfm from "remark-gfm";
+import "katex/dist/katex.min.css";
 
 interface QuestionRendererProps {
   question: Question;
@@ -25,7 +30,20 @@ export function QuestionRenderer({
 
   const renderMultipleChoice = () => (
     <div className="space-y-4">
-      <h3 className="text-lg font-medium select-text">{question.question}</h3>
+      <div className="text-lg font-medium select-text prose prose-invert max-w-none prose-sm">
+        <ReactMarkdown
+          remarkPlugins={[[remarkMath, { singleDollarTextMath: true }], remarkGfm]}
+          rehypePlugins={[
+            [rehypeKatex, {
+              strict: false,
+              trust: true,
+              throwOnError: false
+            }]
+          ]}
+        >
+          {question.question || ""}
+        </ReactMarkdown>
+      </div>
 
       <RadioGroup
         value={typeof answer === "string" ? answer : ""}
@@ -52,9 +70,20 @@ export function QuestionRenderer({
                 <RadioGroupItem value={option} id={`option-${index}`} />
                 <Label
                   htmlFor={`option-${index}`}
-                  className="flex-1 cursor-pointer font-normal select-text"
+                  className="flex-1 cursor-pointer font-normal select-text prose prose-invert max-w-none prose-sm"
                 >
-                  {option}
+                  <ReactMarkdown
+                    remarkPlugins={[[remarkMath, { singleDollarTextMath: true }], remarkGfm]}
+                    rehypePlugins={[
+                      [rehypeKatex, {
+                        strict: false,
+                        trust: true,
+                        throwOnError: false
+                      }]
+                    ]}
+                  >
+                    {option}
+                  </ReactMarkdown>
                 </Label>
                 {isCorrect && (
                   <span className="text-sm text-green-500 font-medium">✓ Correct</span>
@@ -71,7 +100,20 @@ export function QuestionRenderer({
       {showCorrectAnswer && question.explanation && (
         <div className="mt-4 p-4 bg-muted/50 rounded-md">
           <p className="text-sm font-medium mb-1">Explanation:</p>
-          <p className="text-sm text-muted-foreground select-text">{question.explanation}</p>
+          <div className="text-sm text-muted-foreground select-text prose prose-invert max-w-none prose-sm">
+            <ReactMarkdown
+              remarkPlugins={[[remarkMath, { singleDollarTextMath: true }], remarkGfm]}
+              rehypePlugins={[
+                [rehypeKatex, {
+                  strict: false,
+                  trust: true,
+                  throwOnError: false
+                }]
+              ]}
+            >
+              {question.explanation}
+            </ReactMarkdown>
+          </div>
         </div>
       )}
     </div>
@@ -197,7 +239,20 @@ export function QuestionRenderer({
               className="absolute w-full h-full backface-hidden flex items-center justify-center p-8 bg-card border-2 border-border rounded-xl shadow-lg select-text"
               style={{ backfaceVisibility: "hidden" }}
             >
-              <p className="text-xl text-center">{question.front || question.question}</p>
+              <div className="text-xl text-center prose prose-invert max-w-none prose-sm w-full">
+                <ReactMarkdown
+                  remarkPlugins={[[remarkMath, { singleDollarTextMath: true }], remarkGfm]}
+                  rehypePlugins={[
+                    [rehypeKatex, {
+                      strict: false,
+                      trust: true,
+                      throwOnError: false
+                    }]
+                  ]}
+                >
+                  {question.front || question.question || ""}
+                </ReactMarkdown>
+              </div>
             </div>
 
             {/* Back of card */}
@@ -208,9 +263,20 @@ export function QuestionRenderer({
                 transform: "rotateY(180deg)",
               }}
             >
-              <p className="text-xl text-center">
-                {question.back || question.correctAnswer}
-              </p>
+              <div className="text-xl text-center prose prose-invert max-w-none prose-sm w-full">
+                <ReactMarkdown
+                  remarkPlugins={[[remarkMath, { singleDollarTextMath: true }], remarkGfm]}
+                  rehypePlugins={[
+                    [rehypeKatex, {
+                      strict: false,
+                      trust: true,
+                      throwOnError: false
+                    }]
+                  ]}
+                >
+                  {question.back || question.correctAnswer || ""}
+                </ReactMarkdown>
+              </div>
             </div>
           </div>
         </div>

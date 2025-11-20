@@ -29,6 +29,7 @@ import { useFileValidation } from "@/hooks/use-file-validation";
 import { uploadFilesToConvex, FileAttachment } from "@/lib/upload-files";
 import { FileAttachmentCard } from "@/components/file-attachment-card";
 import { useConvex } from "convex/react";
+import { ProtectedLayout } from "@/components/auth/protected-layout";
 
 interface LocalCard {
   _id: Id<"canvasCards">;
@@ -106,10 +107,10 @@ export default function CanvasDetailPage() {
   // CSS transform-based dragging - stores offset without triggering re-renders
   const dragOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const draggedCardElementRef = useRef<HTMLElement | null>(null);
-  const [selectedModel, setSelectedModel] = useState({ label: "FREIRE LITE", value: "openai/gpt-oss-20b" });
+  const [selectedModel, setSelectedModel] = useState({ label: "FREIRE", value: "openai/gpt-oss-20b" });
 
   const MODEL_OPTIONS = [
-    { label: "FREIRE LITE", value: "openai/gpt-oss-20b" },
+    { label: "FREIRE", value: "openai/gpt-oss-20b" },
     { label: "FREIRE", value: "openai/gpt-oss-120b" },
     { label: "FREIRE +", value: "kimi/k2-thinking" },
   ];
@@ -737,6 +738,12 @@ export default function CanvasDetailPage() {
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!chatInput.trim() || !selectedCardId || isSendingMessage) return;
+
+    // Prevent sending messages to temporary cards that haven't been created in the database yet
+    if (selectedCardId.startsWith('temp-')) {
+      console.log('Cannot send message to temporary card. Please wait for card creation to complete.');
+      return;
+    }
 
     const userMessage = chatInput.trim();
     const currentCardId = selectedCardId; // Capture for closure
@@ -1474,8 +1481,9 @@ export default function CanvasDetailPage() {
   const selectedCard = localCards.find(c => c._id === selectedCardId);
 
   return (
-    <TooltipProvider delayDuration={1000}>
-      <div className="flex h-screen overflow-hidden">
+    <ProtectedLayout>
+      <TooltipProvider delayDuration={1000}>
+        <div className="flex h-screen overflow-hidden">
         {/* Sidebar */}
         <aside className={`transition-all duration-300 ${isSidebarCollapsed ? 'w-0' : 'w-[280px]'}`}>
         <div className={`transition-all duration-300 ${isSidebarCollapsed ? 'opacity-0 -translate-x-full' : 'opacity-100 translate-x-0'}`}>
@@ -1705,6 +1713,7 @@ export default function CanvasDetailPage() {
         )}
       </div>
     </div>
-    </TooltipProvider>
+      </TooltipProvider>
+    </ProtectedLayout>
   );
 }

@@ -28,7 +28,7 @@ export default function LLMAnalyticsPage() {
 
   // Get display name for model
   const getModelDisplayName = (model: string): string => {
-    if (model.includes("gpt-oss-20b")) return "FREIRE LITE (GPT OSS 20B)";
+    if (model.includes("gpt-oss-20b")) return "FREIRE (GPT OSS 20B)";
     if (model.includes("gpt-oss-120b")) return "FREIRE (GPT OSS 120B)";
     if (model.includes("kimi-k2-thinking")) return "FREIRE PLUS (Kimi K2 Thinking)";
     if (model.includes("gemini-2.0-flash")) return "Gemini 2.0 Flash";
@@ -62,7 +62,7 @@ export default function LLMAnalyticsPage() {
         <div className="mb-8 text-sm text-muted-foreground">
           <div className="flex flex-wrap gap-4">
             <span><strong>Providers:</strong></span>
-            <span>FREIRE LITE → Hyperbolic</span>
+            <span>FREIRE → Hyperbolic</span>
             <span>FREIRE → GMICloud FP4</span>
             <span>FREIRE PLUS → Chutes INT4 / Fireworks</span>
             <span>Canvas → Google Gemini</span>

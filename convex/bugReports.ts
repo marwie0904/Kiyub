@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { getCurrentUserOrThrow } from "./lib/auth";
 
 /**
  * Create a new bug report
@@ -8,16 +9,16 @@ export const create = mutation({
   args: {
     title: v.string(),
     description: v.string(),
-    userId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
     const now = Date.now();
 
     const bugReportId = await ctx.db.insert("bugReports", {
+      userId: user._id,
       title: args.title,
       description: args.description,
       status: "pending",
-      userId: args.userId,
       createdAt: now,
       updatedAt: now,
     });
@@ -36,6 +37,14 @@ export const updateSessionRecording = mutation({
     posthogSessionId: v.string(),
   },
   handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
+    const bugReport = await ctx.db.get(args.bugReportId);
+
+    if (!bugReport) throw new Error("Bug report not found");
+    if (bugReport.userId !== user._id) {
+      throw new Error("Unauthorized access to bug report");
+    }
+
     await ctx.db.patch(args.bugReportId, {
       sessionRecordingUrl: args.sessionRecordingUrl,
       posthogSessionId: args.posthogSessionId,
@@ -58,6 +67,14 @@ export const updateStatus = mutation({
     ),
   },
   handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
+    const bugReport = await ctx.db.get(args.bugReportId);
+
+    if (!bugReport) throw new Error("Bug report not found");
+    if (bugReport.userId !== user._id) {
+      throw new Error("Unauthorized access to bug report");
+    }
+
     await ctx.db.patch(args.bugReportId, {
       status: args.status,
       updatedAt: Date.now(),
@@ -74,6 +91,14 @@ export const updateNotes = mutation({
     notes: v.string(),
   },
   handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
+    const bugReport = await ctx.db.get(args.bugReportId);
+
+    if (!bugReport) throw new Error("Bug report not found");
+    if (bugReport.userId !== user._id) {
+      throw new Error("Unauthorized access to bug report");
+    }
+
     await ctx.db.patch(args.bugReportId, {
       notes: args.notes,
       updatedAt: Date.now(),
@@ -87,8 +112,11 @@ export const updateNotes = mutation({
 export const list = query({
   args: {},
   handler: async (ctx) => {
+    const user = await getCurrentUserOrThrow(ctx);
+
     const bugReports = await ctx.db
       .query("bugReports")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
       .order("desc")
       .collect();
 
@@ -109,13 +137,16 @@ export const listByStatus = query({
     ),
   },
   handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
+
     const bugReports = await ctx.db
       .query("bugReports")
-      .withIndex("by_status", (q) => q.eq("status", args.status))
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
       .order("desc")
       .collect();
 
-    return bugReports;
+    // Filter by status in-memory since we need both userId and status filtering
+    return bugReports.filter((report) => report.status === args.status);
   },
 });
 
@@ -127,7 +158,15 @@ export const get = query({
     bugReportId: v.id("bugReports"),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.bugReportId);
+    const user = await getCurrentUserOrThrow(ctx);
+    const bugReport = await ctx.db.get(args.bugReportId);
+
+    if (!bugReport) return null;
+    if (bugReport.userId !== user._id) {
+      throw new Error("Unauthorized access to bug report");
+    }
+
+    return bugReport;
   },
 });
 
@@ -139,6 +178,14 @@ export const remove = mutation({
     bugReportId: v.id("bugReports"),
   },
   handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
+    const bugReport = await ctx.db.get(args.bugReportId);
+
+    if (!bugReport) throw new Error("Bug report not found");
+    if (bugReport.userId !== user._id) {
+      throw new Error("Unauthorized access to bug report");
+    }
+
     await ctx.db.delete(args.bugReportId);
   },
 });

@@ -1,12 +1,15 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { getCurrentUserOrThrow } from "./lib/auth";
 
 // Get all projects (ordered by most recently updated)
 export const list = query({
   handler: async (ctx) => {
+    const user = await getCurrentUserOrThrow(ctx);
+
     const projects = await ctx.db
       .query("projects")
-      .withIndex("by_updated", (q) => q)
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
       .order("desc")
       .collect();
 
@@ -18,7 +21,14 @@ export const list = query({
 export const get = query({
   args: { id: v.id("projects") },
   handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
     const project = await ctx.db.get(args.id);
+
+    if (!project) return null;
+    if (project.userId !== user._id) {
+      throw new Error("Unauthorized access to project");
+    }
+
     return project;
   },
 });
@@ -31,9 +41,11 @@ export const create = mutation({
     instructions: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
     const now = Date.now();
 
     const projectId = await ctx.db.insert("projects", {
+      userId: user._id,
       title: args.title,
       description: args.description,
       instructions: args.instructions || "",
@@ -55,7 +67,14 @@ export const update = mutation({
     description: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
     const { id, ...updates } = args;
+
+    const project = await ctx.db.get(id);
+    if (!project) throw new Error("Project not found");
+    if (project.userId !== user._id) {
+      throw new Error("Unauthorized access to project");
+    }
 
     await ctx.db.patch(id, {
       ...updates,
@@ -71,6 +90,14 @@ export const rename = mutation({
     title: v.string(),
   },
   handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
+    const project = await ctx.db.get(args.id);
+
+    if (!project) throw new Error("Project not found");
+    if (project.userId !== user._id) {
+      throw new Error("Unauthorized access to project");
+    }
+
     await ctx.db.patch(args.id, {
       title: args.title,
       updatedAt: Date.now(),
@@ -84,8 +111,13 @@ export const togglePin = mutation({
     id: v.id("projects"),
   },
   handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
     const project = await ctx.db.get(args.id);
+
     if (!project) throw new Error("Project not found");
+    if (project.userId !== user._id) {
+      throw new Error("Unauthorized access to project");
+    }
 
     await ctx.db.patch(args.id, {
       isPinned: !project.isPinned,
@@ -101,6 +133,14 @@ export const updateInstructions = mutation({
     instructions: v.string(),
   },
   handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
+    const project = await ctx.db.get(args.id);
+
+    if (!project) throw new Error("Project not found");
+    if (project.userId !== user._id) {
+      throw new Error("Unauthorized access to project");
+    }
+
     await ctx.db.patch(args.id, {
       instructions: args.instructions,
       updatedAt: Date.now(),
@@ -112,6 +152,14 @@ export const updateInstructions = mutation({
 export const remove = mutation({
   args: { id: v.id("projects") },
   handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
+    const project = await ctx.db.get(args.id);
+
+    if (!project) throw new Error("Project not found");
+    if (project.userId !== user._id) {
+      throw new Error("Unauthorized access to project");
+    }
+
     // Delete all project files
     const files = await ctx.db
       .query("projectFiles")
@@ -158,6 +206,14 @@ export const updateTokenUsage = mutation({
     tokensUsed: v.number(),
   },
   handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
+    const project = await ctx.db.get(args.id);
+
+    if (!project) throw new Error("Project not found");
+    if (project.userId !== user._id) {
+      throw new Error("Unauthorized access to project");
+    }
+
     await ctx.db.patch(args.id, {
       tokensUsed: args.tokensUsed,
       updatedAt: Date.now(),

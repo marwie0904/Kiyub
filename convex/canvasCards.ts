@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { getCurrentUserOrThrow } from "./lib/auth";
 
 // Token limit per canvas card (output tokens only)
 const OUTPUT_TOKEN_LIMIT = 50000;
@@ -8,6 +9,14 @@ const OUTPUT_TOKEN_LIMIT = 50000;
 export const list = query({
   args: { canvasId: v.id("canvases") },
   handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
+    const canvas = await ctx.db.get(args.canvasId);
+
+    if (!canvas) throw new Error("Canvas not found");
+    if (canvas.userId !== user._id) {
+      throw new Error("Unauthorized access to canvas");
+    }
+
     const cards = await ctx.db
       .query("canvasCards")
       .withIndex("by_canvas", (q) => q.eq("canvasId", args.canvasId))
@@ -21,7 +30,14 @@ export const list = query({
 export const get = query({
   args: { id: v.id("canvasCards") },
   handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
     const card = await ctx.db.get(args.id);
+
+    if (!card) return null;
+    if (card.userId !== user._id) {
+      throw new Error("Unauthorized access to card");
+    }
+
     return card;
   },
 });
@@ -37,9 +53,18 @@ export const create = mutation({
     content: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
+    const canvas = await ctx.db.get(args.canvasId);
+
+    if (!canvas) throw new Error("Canvas not found");
+    if (canvas.userId !== user._id) {
+      throw new Error("Unauthorized access to canvas");
+    }
+
     const now = Date.now();
 
     const cardId = await ctx.db.insert("canvasCards", {
+      userId: user._id,
       canvasId: args.canvasId,
       x: args.x,
       y: args.y,
@@ -65,7 +90,14 @@ export const updatePosition = mutation({
     height: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
     const { id, ...updates } = args;
+
+    const card = await ctx.db.get(id);
+    if (!card) throw new Error("Card not found");
+    if (card.userId !== user._id) {
+      throw new Error("Unauthorized access to card");
+    }
 
     await ctx.db.patch(id, {
       ...updates,
@@ -81,6 +113,14 @@ export const updateContent = mutation({
     content: v.string(),
   },
   handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
+    const card = await ctx.db.get(args.id);
+
+    if (!card) throw new Error("Card not found");
+    if (card.userId !== user._id) {
+      throw new Error("Unauthorized access to card");
+    }
+
     await ctx.db.patch(args.id, {
       content: args.content,
       updatedAt: Date.now(),
@@ -92,8 +132,13 @@ export const updateContent = mutation({
 export const getTokenUsage = query({
   args: { cardId: v.id("canvasCards") },
   handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
     const card = await ctx.db.get(args.cardId);
+
     if (!card) throw new Error("Card not found");
+    if (card.userId !== user._id) {
+      throw new Error("Unauthorized access to card");
+    }
 
     const conversationHistory = card.conversationHistory || [];
     const totalOutputTokens = conversationHistory.reduce((sum, msg) => {
@@ -134,8 +179,13 @@ export const addMessage = mutation({
     ),
   },
   handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
     const card = await ctx.db.get(args.id);
+
     if (!card) throw new Error("Card not found");
+    if (card.userId !== user._id) {
+      throw new Error("Unauthorized access to card");
+    }
 
     // Check token limit before adding new message
     if (args.role === "assistant" && args.tokenUsage) {
@@ -179,13 +229,19 @@ export const branch = mutation({
     y: v.number(),
   },
   handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
     const sourceCard = await ctx.db.get(args.sourceCardId);
+
     if (!sourceCard) throw new Error("Source card not found");
+    if (sourceCard.userId !== user._id) {
+      throw new Error("Unauthorized access to card");
+    }
 
     const now = Date.now();
 
     // Create duplicate card with same content and conversation history
     const newCardId = await ctx.db.insert("canvasCards", {
+      userId: user._id,
       canvasId: sourceCard.canvasId,
       x: args.x,
       y: args.y,
@@ -205,6 +261,14 @@ export const branch = mutation({
 export const remove = mutation({
   args: { id: v.id("canvasCards") },
   handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
+    const card = await ctx.db.get(args.id);
+
+    if (!card) throw new Error("Card not found");
+    if (card.userId !== user._id) {
+      throw new Error("Unauthorized access to card");
+    }
+
     await ctx.db.delete(args.id);
   },
 });

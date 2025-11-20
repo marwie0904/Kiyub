@@ -1,8 +1,11 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import { authTables } from "@convex-dev/auth/server";
 
 export default defineSchema({
+  ...authTables,
   projects: defineTable({
+    userId: v.optional(v.id("users")),
     title: v.string(),
     description: v.optional(v.string()),
     instructions: v.string(),
@@ -15,9 +18,11 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   })
+    .index("by_user", ["userId", "updatedAt"])
     .index("by_updated", ["updatedAt"]),
 
   projectFiles: defineTable({
+    userId: v.optional(v.id("users")),
     projectId: v.id("projects"),
     storageId: v.id("_storage"),
     fileName: v.string(),
@@ -26,9 +31,11 @@ export default defineSchema({
 
     uploadedAt: v.number(),
   })
+    .index("by_user", ["userId", "uploadedAt"])
     .index("by_project", ["projectId", "uploadedAt"]),
 
   conversations: defineTable({
+    userId: v.optional(v.id("users")),
     title: v.optional(v.string()),
     model: v.optional(v.string()),
     projectId: v.optional(v.id("projects")), // Link to project
@@ -43,10 +50,12 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   })
+    .index("by_user", ["userId", "updatedAt"])
     .index("by_updated", ["updatedAt"])
     .index("by_project", ["projectId", "updatedAt"]),
 
   messages: defineTable({
+    userId: v.optional(v.id("users")),
     conversationId: v.id("conversations"),
     role: v.union(
       v.literal("user"),
@@ -88,9 +97,11 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   })
+    .index("by_user", ["userId", "createdAt"])
     .index("by_conversation", ["conversationId", "createdAt"]),
 
   tests: defineTable({
+    userId: v.optional(v.id("users")),
     conversationId: v.id("conversations"),
     title: v.string(),
     questions: v.array(
@@ -113,9 +124,11 @@ export default defineSchema({
     isGenerating: v.optional(v.boolean()), // Track if test is being generated in background
     createdAt: v.number(),
   })
+    .index("by_user", ["userId", "createdAt"])
     .index("by_conversation", ["conversationId", "createdAt"]),
 
   testResponses: defineTable({
+    userId: v.optional(v.id("users")),
     testId: v.id("tests"),
     conversationId: v.id("conversations"),
     answers: v.string(), // JSON stringified Record<questionId, answer>
@@ -125,10 +138,12 @@ export default defineSchema({
     lastQuestionIndex: v.optional(v.number()), // Remember which question user was on
     submittedAt: v.number(),
   })
+    .index("by_user", ["userId", "submittedAt"])
     .index("by_test", ["testId", "submittedAt"])
     .index("by_conversation", ["conversationId", "submittedAt"]),
 
   canvases: defineTable({
+    userId: v.optional(v.id("users")),
     title: v.string(),
     description: v.optional(v.string()),
     isPinned: v.optional(v.boolean()),
@@ -136,9 +151,11 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   })
+    .index("by_user", ["userId", "updatedAt"])
     .index("by_updated", ["updatedAt"]),
 
   canvasCards: defineTable({
+    userId: v.optional(v.id("users")),
     canvasId: v.id("canvases"),
     x: v.number(),
     y: v.number(),
@@ -175,9 +192,11 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   })
+    .index("by_user", ["userId", "createdAt"])
     .index("by_canvas", ["canvasId", "createdAt"]),
 
   canvasConnections: defineTable({
+    userId: v.optional(v.id("users")),
     canvasId: v.id("canvases"),
     sourceCardId: v.id("canvasCards"),
     targetCardId: v.id("canvasCards"),
@@ -210,11 +229,13 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   })
+    .index("by_user", ["userId", "createdAt"])
     .index("by_canvas", ["canvasId"])
     .index("by_source", ["sourceCardId"])
     .index("by_target", ["targetCardId"]),
 
   bugReports: defineTable({
+    userId: v.optional(v.id("users")),
     title: v.string(),
     description: v.string(),
     status: v.union(
@@ -226,15 +247,16 @@ export default defineSchema({
     notes: v.optional(v.string()),
     sessionRecordingUrl: v.optional(v.string()),
     posthogSessionId: v.optional(v.string()),
-    userId: v.optional(v.string()),
 
     createdAt: v.number(),
     updatedAt: v.number(),
   })
+    .index("by_user", ["userId", "createdAt"])
     .index("by_status", ["status", "createdAt"])
     .index("by_created", ["createdAt"]),
 
   featureRequests: defineTable({
+    userId: v.optional(v.id("users")),
     title: v.string(),
     description: v.string(),
     status: v.union(
@@ -250,10 +272,13 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   })
+    .index("by_user", ["userId", "createdAt"])
     .index("by_status", ["status", "createdAt"])
     .index("by_created", ["createdAt"]),
 
   aiTracking: defineTable({
+    userId: v.optional(v.id("users")),
+
     // Token usage
     inputTokens: v.number(),
     outputTokens: v.number(),
@@ -272,9 +297,6 @@ export default defineSchema({
       v.literal("file_analysis"),
       v.literal("test_creation")
     ),
-
-    // User tracking
-    userId: v.optional(v.string()),
 
     // Cost tracking
     costUsd: v.number(),
@@ -309,6 +331,7 @@ export default defineSchema({
     .index("by_created", ["createdAt"]),
 
   responseFeedback: defineTable({
+    userId: v.optional(v.id("users")),
     description: v.string(),
     userQuestion: v.string(),
     aiResponse: v.string(),
@@ -320,6 +343,7 @@ export default defineSchema({
 
     createdAt: v.number(),
   })
+    .index("by_user", ["userId", "createdAt"])
     .index("by_created", ["createdAt"])
     .index("by_conversation", ["conversationId", "createdAt"]),
 });

@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { getCurrentUserOrThrow } from "./lib/auth";
 
 /**
  * Create a new feature request
@@ -12,9 +13,11 @@ export const create = mutation({
     userEmail: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
     const now = Date.now();
 
     const featureRequestId = await ctx.db.insert("featureRequests", {
+      userId: user._id,
       title: args.title,
       description: args.description,
       status: "pending",
@@ -42,6 +45,14 @@ export const updateStatus = mutation({
     ),
   },
   handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
+    const featureRequest = await ctx.db.get(args.featureRequestId);
+
+    if (!featureRequest) throw new Error("Feature request not found");
+    if (featureRequest.userId !== user._id) {
+      throw new Error("Unauthorized access to feature request");
+    }
+
     await ctx.db.patch(args.featureRequestId, {
       status: args.status,
       updatedAt: Date.now(),
@@ -58,6 +69,14 @@ export const updateNotes = mutation({
     notes: v.string(),
   },
   handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
+    const featureRequest = await ctx.db.get(args.featureRequestId);
+
+    if (!featureRequest) throw new Error("Feature request not found");
+    if (featureRequest.userId !== user._id) {
+      throw new Error("Unauthorized access to feature request");
+    }
+
     await ctx.db.patch(args.featureRequestId, {
       notes: args.notes,
       updatedAt: Date.now(),
@@ -71,8 +90,11 @@ export const updateNotes = mutation({
 export const list = query({
   args: {},
   handler: async (ctx) => {
+    const user = await getCurrentUserOrThrow(ctx);
+
     const featureRequests = await ctx.db
       .query("featureRequests")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
       .order("desc")
       .collect();
 
@@ -93,13 +115,16 @@ export const listByStatus = query({
     ),
   },
   handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
+
     const featureRequests = await ctx.db
       .query("featureRequests")
-      .withIndex("by_status", (q) => q.eq("status", args.status))
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
       .order("desc")
       .collect();
 
-    return featureRequests;
+    // Filter by status in-memory since we need both userId and status filtering
+    return featureRequests.filter((request) => request.status === args.status);
   },
 });
 
@@ -111,7 +136,15 @@ export const get = query({
     featureRequestId: v.id("featureRequests"),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.featureRequestId);
+    const user = await getCurrentUserOrThrow(ctx);
+    const featureRequest = await ctx.db.get(args.featureRequestId);
+
+    if (!featureRequest) return null;
+    if (featureRequest.userId !== user._id) {
+      throw new Error("Unauthorized access to feature request");
+    }
+
+    return featureRequest;
   },
 });
 
@@ -123,6 +156,14 @@ export const remove = mutation({
     featureRequestId: v.id("featureRequests"),
   },
   handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
+    const featureRequest = await ctx.db.get(args.featureRequestId);
+
+    if (!featureRequest) throw new Error("Feature request not found");
+    if (featureRequest.userId !== user._id) {
+      throw new Error("Unauthorized access to feature request");
+    }
+
     await ctx.db.delete(args.featureRequestId);
   },
 });

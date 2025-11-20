@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { Id } from "./_generated/dataModel";
+import { getCurrentUserOrThrow, getCurrentUser } from "./lib/auth";
 
 /**
  * Track AI usage in Convex database
@@ -26,9 +26,6 @@ export const track = mutation({
       v.literal("test_creation")
     ),
 
-    // User tracking
-    userId: v.optional(v.string()),
-
     // Cost tracking
     costUsd: v.number(),
     costPhp: v.number(),
@@ -52,7 +49,10 @@ export const track = mutation({
     successfulRetryAttempts: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
+
     const trackingId = await ctx.db.insert("aiTracking", {
+      userId: user._id,
       inputTokens: args.inputTokens,
       outputTokens: args.outputTokens,
       reasoningTokens: args.reasoningTokens,
@@ -60,7 +60,6 @@ export const track = mutation({
       model: args.model,
       provider: args.provider,
       usageType: args.usageType,
-      userId: args.userId,
       costUsd: args.costUsd,
       costPhp: args.costPhp,
       conversationId: args.conversationId,
@@ -88,7 +87,6 @@ export const getStats = query({
   args: {
     startDate: v.optional(v.number()),
     endDate: v.optional(v.number()),
-    userId: v.optional(v.string()),
     model: v.optional(v.string()),
     usageType: v.optional(v.union(
       v.literal("conversation"),
@@ -101,28 +99,20 @@ export const getStats = query({
     )),
   },
   handler: async (ctx, args) => {
-    // Apply filters
-    let records;
-    if (args.userId) {
-      records = await ctx.db
-        .query("aiTracking")
-        .withIndex("by_user", (q) => q.eq("userId", args.userId))
-        .collect();
-    } else if (args.model !== undefined) {
-      records = await ctx.db
-        .query("aiTracking")
-        .withIndex("by_model", (q) => q.eq("model", args.model!))
-        .collect();
-    } else if (args.usageType !== undefined) {
-      records = await ctx.db
-        .query("aiTracking")
-        .withIndex("by_usage_type", (q) => q.eq("usageType", args.usageType!))
-        .collect();
-    } else {
-      records = await ctx.db
-        .query("aiTracking")
-        .withIndex("by_created")
-        .collect();
+    const user = await getCurrentUserOrThrow(ctx);
+
+    // Get all records for this user
+    let records = await ctx.db
+      .query("aiTracking")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+
+    // Apply additional filters
+    if (args.model !== undefined) {
+      records = records.filter(r => r.model === args.model);
+    }
+    if (args.usageType !== undefined) {
+      records = records.filter(r => r.usageType === args.usageType);
     }
 
     // Filter by date range
@@ -223,22 +213,16 @@ export const getStats = query({
 export const getRecent = query({
   args: {
     limit: v.optional(v.number()),
-    userId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
     const limit = args.limit || 50;
 
-    const records = args.userId
-      ? await ctx.db
-          .query("aiTracking")
-          .withIndex("by_user", (q) => q.eq("userId", args.userId))
-          .order("desc")
-          .take(limit)
-      : await ctx.db
-          .query("aiTracking")
-          .withIndex("by_created")
-          .order("desc")
-          .take(limit);
+    const records = await ctx.db
+      .query("aiTracking")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .order("desc")
+      .take(limit);
 
     return records;
   },
@@ -252,6 +236,14 @@ export const getByConversation = query({
     conversationId: v.id("conversations"),
   },
   handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
+    const conversation = await ctx.db.get(args.conversationId);
+
+    if (!conversation) throw new Error("Conversation not found");
+    if (conversation.userId !== user._id) {
+      throw new Error("Unauthorized access to conversation");
+    }
+
     const records = await ctx.db
       .query("aiTracking")
       .withIndex("by_conversation", (q) => q.eq("conversationId", args.conversationId))
@@ -281,6 +273,14 @@ export const getByCanvas = query({
     canvasId: v.id("canvases"),
   },
   handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
+    const canvas = await ctx.db.get(args.canvasId);
+
+    if (!canvas) throw new Error("Canvas not found");
+    if (canvas.userId !== user._id) {
+      throw new Error("Unauthorized access to canvas");
+    }
+
     const records = await ctx.db
       .query("aiTracking")
       .withIndex("by_canvas", (q) => q.eq("canvasId", args.canvasId))
@@ -310,29 +310,21 @@ export const getByCanvas = query({
  * Get daily usage in USD for today
  */
 export const getDailyUsage = query({
-  args: {
-    userId: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
+  args: {},
+  handler: async (ctx) => {
+    const user = await getCurrentUserOrThrow(ctx);
+
     // Get start of today (midnight)
     const now = Date.now();
     const today = new Date(now);
     today.setHours(0, 0, 0, 0);
     const startOfDay = today.getTime();
 
-    // Query all tracking records from today
-    let records;
-    if (args.userId) {
-      records = await ctx.db
-        .query("aiTracking")
-        .withIndex("by_user", (q) => q.eq("userId", args.userId))
-        .collect();
-    } else {
-      records = await ctx.db
-        .query("aiTracking")
-        .withIndex("by_created")
-        .collect();
-    }
+    // Query all tracking records for this user
+    const records = await ctx.db
+      .query("aiTracking")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
 
     // Filter for today only
     const todayRecords = records.filter(r => r.createdAt >= startOfDay);
@@ -348,12 +340,17 @@ export const getDailyUsage = query({
 });
 
 /**
- * Delete all AI tracking data (for resetting analytics)
+ * Delete all AI tracking data for current user (for resetting analytics)
  */
 export const deleteAll = mutation({
   args: {},
   handler: async (ctx) => {
-    const records = await ctx.db.query("aiTracking").collect();
+    const user = await getCurrentUserOrThrow(ctx);
+
+    const records = await ctx.db
+      .query("aiTracking")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
 
     let deletedCount = 0;
     for (const record of records) {
@@ -361,7 +358,7 @@ export const deleteAll = mutation({
       deletedCount++;
     }
 
-    console.log(`Deleted ${deletedCount} AI tracking records`);
+    console.log(`Deleted ${deletedCount} AI tracking records for user ${user._id}`);
     return { deletedCount };
   },
 });

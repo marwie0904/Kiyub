@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { getCurrentUserOrThrow } from "./lib/auth";
 
 // Token limit per conversation (output tokens only)
 const OUTPUT_TOKEN_LIMIT = 50000;
@@ -8,6 +9,14 @@ const OUTPUT_TOKEN_LIMIT = 50000;
 export const getAll = query({
   args: { conversationId: v.id("conversations") },
   handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
+    const conversation = await ctx.db.get(args.conversationId);
+
+    if (!conversation) throw new Error("Conversation not found");
+    if (conversation.userId !== user._id) {
+      throw new Error("Unauthorized access to conversation");
+    }
+
     return await ctx.db
       .query("messages")
       .withIndex("by_conversation", (q) =>
@@ -22,6 +31,14 @@ export const getAll = query({
 export const getOutputTokenCount = query({
   args: { conversationId: v.id("conversations") },
   handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
+    const conversation = await ctx.db.get(args.conversationId);
+
+    if (!conversation) throw new Error("Conversation not found");
+    if (conversation.userId !== user._id) {
+      throw new Error("Unauthorized access to conversation");
+    }
+
     const messages = await ctx.db
       .query("messages")
       .withIndex("by_conversation", (q) =>
@@ -84,6 +101,15 @@ export const create = mutation({
     reasoningDetails: v.optional(v.any()),
   },
   handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
+
+    // Get current conversation and verify ownership
+    const conversation = await ctx.db.get(args.conversationId);
+    if (!conversation) throw new Error("Conversation not found");
+    if (conversation.userId !== user._id) {
+      throw new Error("Unauthorized access to conversation");
+    }
+
     // Check token limit for user messages (before AI responds)
     if (args.role === "user") {
       const messages = await ctx.db
@@ -108,6 +134,7 @@ export const create = mutation({
 
     // Insert message
     const messageId = await ctx.db.insert("messages", {
+      userId: user._id,
       conversationId: args.conversationId,
       role: args.role,
       content: args.content,
@@ -118,10 +145,6 @@ export const create = mutation({
       createdAt: now,
       updatedAt: now,
     });
-
-    // Get current conversation
-    const conversation = await ctx.db.get(args.conversationId);
-    if (!conversation) throw new Error("Conversation not found");
 
     // Update conversation metadata
     await ctx.db.patch(args.conversationId, {
@@ -177,6 +200,15 @@ export const send = mutation({
     reasoningDetails: v.optional(v.any()),
   },
   handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
+
+    // Get current conversation and verify ownership
+    const conversation = await ctx.db.get(args.conversationId);
+    if (!conversation) throw new Error("Conversation not found");
+    if (conversation.userId !== user._id) {
+      throw new Error("Unauthorized access to conversation");
+    }
+
     // Check token limit for user messages (before AI responds)
     if (args.role === "user") {
       const messages = await ctx.db
@@ -201,6 +233,7 @@ export const send = mutation({
 
     // Insert message
     const messageId = await ctx.db.insert("messages", {
+      userId: user._id,
       conversationId: args.conversationId,
       role: args.role,
       content: args.content,
@@ -211,10 +244,6 @@ export const send = mutation({
       createdAt: now,
       updatedAt: now,
     });
-
-    // Get current conversation
-    const conversation = await ctx.db.get(args.conversationId);
-    if (!conversation) throw new Error("Conversation not found");
 
     // Update conversation metadata
     await ctx.db.patch(args.conversationId, {

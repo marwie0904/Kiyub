@@ -236,8 +236,8 @@ export function Sidebar({
           >
             <PanelLeftClose className="h-5 w-5 text-foreground" />
           </Button>
-          <h1 className="text-2xl font-bold font-[family-name:var(--font-merriweather)] text-foreground">
-            Freire
+          <h1 className="text-xl font-bold font-[family-name:var(--font-merriweather)] text-foreground">
+            Kiyub
           </h1>
         </div>
         <div className="flex items-center gap-2">

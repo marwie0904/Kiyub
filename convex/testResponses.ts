@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { getCurrentUserOrThrow } from "./lib/auth";
 
 // Update test response (for saving progress or completing)
 export const updateResponse = mutation({
@@ -10,6 +11,14 @@ export const updateResponse = mutation({
     lastQuestionIndex: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
+    const test = await ctx.db.get(args.testId);
+
+    if (!test) throw new Error("Test not found");
+    if (test.userId !== user._id) {
+      throw new Error("Unauthorized access to test");
+    }
+
     // Find the testResponse for this test
     const response = await ctx.db
       .query("testResponses")
@@ -18,6 +27,10 @@ export const updateResponse = mutation({
 
     if (!response) {
       throw new Error("Test response not found. Test may not have been created properly.");
+    }
+
+    if (response.userId !== user._id) {
+      throw new Error("Unauthorized access to test response");
     }
 
     // Update the response
@@ -40,10 +53,20 @@ export const submit = mutation({
     answers: v.string(), // JSON stringified Record<questionId, answer>
   },
   handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
+
     // Get the test to score answers
     const test = await ctx.db.get(args.testId);
-    if (!test) {
-      throw new Error("Test not found");
+    if (!test) throw new Error("Test not found");
+    if (test.userId !== user._id) {
+      throw new Error("Unauthorized access to test");
+    }
+
+    // Verify conversation ownership
+    const conversation = await ctx.db.get(args.conversationId);
+    if (!conversation) throw new Error("Conversation not found");
+    if (conversation.userId !== user._id) {
+      throw new Error("Unauthorized access to conversation");
     }
 
     // Find the existing testResponse
@@ -52,8 +75,9 @@ export const submit = mutation({
       .withIndex("by_test", (q) => q.eq("testId", args.testId))
       .first();
 
-    if (!response) {
-      throw new Error("Test response not found");
+    if (!response) throw new Error("Test response not found");
+    if (response.userId !== user._id) {
+      throw new Error("Unauthorized access to test response");
     }
 
     // Parse answers
@@ -111,7 +135,15 @@ export const submit = mutation({
 export const get = query({
   args: { responseId: v.id("testResponses") },
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.responseId);
+    const user = await getCurrentUserOrThrow(ctx);
+    const response = await ctx.db.get(args.responseId);
+
+    if (!response) return null;
+    if (response.userId !== user._id) {
+      throw new Error("Unauthorized access to test response");
+    }
+
+    return response;
   },
 });
 
@@ -119,6 +151,14 @@ export const get = query({
 export const getByTest = query({
   args: { testId: v.id("tests") },
   handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
+    const test = await ctx.db.get(args.testId);
+
+    if (!test) throw new Error("Test not found");
+    if (test.userId !== user._id) {
+      throw new Error("Unauthorized access to test");
+    }
+
     return await ctx.db
       .query("testResponses")
       .withIndex("by_test", (q) => q.eq("testId", args.testId))
@@ -131,6 +171,14 @@ export const getByTest = query({
 export const getByConversation = query({
   args: { conversationId: v.id("conversations") },
   handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
+    const conversation = await ctx.db.get(args.conversationId);
+
+    if (!conversation) throw new Error("Conversation not found");
+    if (conversation.userId !== user._id) {
+      throw new Error("Unauthorized access to conversation");
+    }
+
     return await ctx.db
       .query("testResponses")
       .withIndex("by_conversation", (q) =>
@@ -145,6 +193,14 @@ export const getByConversation = query({
 export const getPartialSave = query({
   args: { testId: v.id("tests") },
   handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
+    const test = await ctx.db.get(args.testId);
+
+    if (!test) throw new Error("Test not found");
+    if (test.userId !== user._id) {
+      throw new Error("Unauthorized access to test");
+    }
+
     return await ctx.db
       .query("testResponses")
       .withIndex("by_test", (q) => q.eq("testId", args.testId))
@@ -157,6 +213,14 @@ export const getPartialSave = query({
 export const remove = mutation({
   args: { responseId: v.id("testResponses") },
   handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
+    const response = await ctx.db.get(args.responseId);
+
+    if (!response) throw new Error("Test response not found");
+    if (response.userId !== user._id) {
+      throw new Error("Unauthorized access to test response");
+    }
+
     await ctx.db.delete(args.responseId);
   },
 });

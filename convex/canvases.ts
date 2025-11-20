@@ -1,12 +1,15 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { getCurrentUserOrThrow } from "./lib/auth";
 
 // Get all canvases (ordered by most recently updated)
 export const list = query({
   handler: async (ctx) => {
+    const user = await getCurrentUserOrThrow(ctx);
+
     const canvases = await ctx.db
       .query("canvases")
-      .withIndex("by_updated", (q) => q)
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
       .order("desc")
       .collect();
 
@@ -18,7 +21,14 @@ export const list = query({
 export const get = query({
   args: { id: v.id("canvases") },
   handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
     const canvas = await ctx.db.get(args.id);
+
+    if (!canvas) return null;
+    if (canvas.userId !== user._id) {
+      throw new Error("Unauthorized access to canvas");
+    }
+
     return canvas;
   },
 });
@@ -30,9 +40,11 @@ export const create = mutation({
     description: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
     const now = Date.now();
 
     const canvasId = await ctx.db.insert("canvases", {
+      userId: user._id,
       title: args.title,
       description: args.description,
       createdAt: now,
@@ -51,7 +63,14 @@ export const update = mutation({
     description: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
     const { id, ...updates } = args;
+
+    const canvas = await ctx.db.get(id);
+    if (!canvas) throw new Error("Canvas not found");
+    if (canvas.userId !== user._id) {
+      throw new Error("Unauthorized access to canvas");
+    }
 
     await ctx.db.patch(id, {
       ...updates,
@@ -67,6 +86,14 @@ export const rename = mutation({
     title: v.string(),
   },
   handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
+    const canvas = await ctx.db.get(args.id);
+
+    if (!canvas) throw new Error("Canvas not found");
+    if (canvas.userId !== user._id) {
+      throw new Error("Unauthorized access to canvas");
+    }
+
     await ctx.db.patch(args.id, {
       title: args.title,
       updatedAt: Date.now(),
@@ -80,8 +107,13 @@ export const togglePin = mutation({
     id: v.id("canvases"),
   },
   handler: async (ctx, args) => {
+    const user = await getCurrentUserOrThrow(ctx);
     const canvas = await ctx.db.get(args.id);
+
     if (!canvas) throw new Error("Canvas not found");
+    if (canvas.userId !== user._id) {
+      throw new Error("Unauthorized access to canvas");
+    }
 
     await ctx.db.patch(args.id, {
       isPinned: !canvas.isPinned,
@@ -94,7 +126,34 @@ export const togglePin = mutation({
 export const remove = mutation({
   args: { id: v.id("canvases") },
   handler: async (ctx, args) => {
-    // In the future, we'll need to delete associated canvas cards here
+    const user = await getCurrentUserOrThrow(ctx);
+    const canvas = await ctx.db.get(args.id);
+
+    if (!canvas) throw new Error("Canvas not found");
+    if (canvas.userId !== user._id) {
+      throw new Error("Unauthorized access to canvas");
+    }
+
+    // Delete all canvas cards
+    const cards = await ctx.db
+      .query("canvasCards")
+      .withIndex("by_canvas", (q) => q.eq("canvasId", args.id))
+      .collect();
+
+    for (const card of cards) {
+      await ctx.db.delete(card._id);
+    }
+
+    // Delete all canvas connections
+    const connections = await ctx.db
+      .query("canvasConnections")
+      .withIndex("by_canvas", (q) => q.eq("canvasId", args.id))
+      .collect();
+
+    for (const connection of connections) {
+      await ctx.db.delete(connection._id);
+    }
+
     await ctx.db.delete(args.id);
   },
 });

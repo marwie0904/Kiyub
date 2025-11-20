@@ -4,7 +4,7 @@
  */
 export function getProviderForModel(modelName: string): string {
   const providerMap: Record<string, string> = {
-    // FREIRE LITE - DeepInfra GPT-OSS 20B (AI SDK)
+    // FREIRE - DeepInfra GPT-OSS 20B (AI SDK)
     "openai/gpt-oss-20b": "deepinfra",
 
     // FREIRE - Disabled

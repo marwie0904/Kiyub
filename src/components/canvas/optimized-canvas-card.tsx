@@ -122,7 +122,7 @@ function CanvasChatBox({
           e.preventDefault();
           onSendMessage?.(e);
         }}
-        selectedModel={selectedModel || { label: "FREIRE LITE", value: "openai/gpt-oss-20b" }}
+        selectedModel={selectedModel || { label: "FREIRE", value: "openai/gpt-oss-20b" }}
         onModelChange={(model) => onModelChange?.(model)}
         modelOptions={modelOptions || []}
         attachedFiles={attachedFiles}

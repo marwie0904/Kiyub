@@ -25,7 +25,7 @@ export const ACTUAL_MODELS = {
 export const MODEL_OPTIONS: ModelOption[] = [
   {
     value: ACTUAL_MODELS.GPT_OSS_20B,
-    label: "FREIRE LITE",
+    label: "FREIRE",
     description: "Currently Unavailable",
     disabled: true, // DISABLED: GPT-OSS-20B has known tool calling bugs - see deepinfra-web-search.ts for details
   },

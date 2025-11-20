@@ -29,7 +29,7 @@ export async function POST(req: Request) {
 
     // Get provider type for model
     const getProviderType = (modelName: string): "cerebras" | "deepinfra" | "disabled" => {
-      if (modelName === "openai/gpt-oss-20b") return "deepinfra"; // FREIRE LITE
+      if (modelName === "openai/gpt-oss-20b") return "deepinfra"; // FREIRE
       if (modelName === "cerebras/gpt-oss-120b") return "cerebras"; // FREIRE FAST
       if (modelName === "openai/gpt-oss-120b") return "disabled"; // FREIRE (original) - disabled
       return "cerebras"; // Default to Cerebras
@@ -42,7 +42,7 @@ export async function POST(req: Request) {
       return Response.json(
         {
           error: "This model is currently unavailable",
-          details: "Please select FREIRE LITE or FREIRE FAST",
+          details: "Please select FREIRE or FREIRE FAST",
         },
         { status: 400 }
       );
@@ -89,7 +89,7 @@ export async function POST(req: Request) {
     console.log("🔧 [Provider] Using provider:", providerType);
     let selectedModel;
     if (providerType === "deepinfra") {
-      // FREIRE LITE - DeepInfra GPT-OSS 20B
+      // FREIRE - DeepInfra GPT-OSS 20B
       selectedModel = deepinfra("openai/gpt-oss-20b");
       console.log("🔧 [Model] Using DeepInfra with openai/gpt-oss-20b");
     } else {
