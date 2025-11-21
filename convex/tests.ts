@@ -25,6 +25,8 @@ export const create = mutation({
     conversationId: v.id("conversations"),
     title: v.string(),
     questions: v.array(questionSchema),
+    isGenerating: v.optional(v.boolean()),
+    generationStatus: v.optional(v.union(v.literal("uploading"), v.literal("generating"))),
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUserOrThrow(ctx);
@@ -43,20 +45,24 @@ export const create = mutation({
       conversationId: args.conversationId,
       title: args.title,
       questions: args.questions,
+      isGenerating: args.isGenerating,
+      generationStatus: args.generationStatus,
       createdAt: now,
     });
 
-    // Automatically create an incomplete testResponse
-    await ctx.db.insert("testResponses", {
-      userId: user._id,
-      testId,
-      conversationId: args.conversationId,
-      answers: "{}",
-      score: 0,
-      totalQuestions: args.questions.length,
-      isCompleted: false,
-      submittedAt: now,
-    });
+    // Only create testResponse if test is not being generated and has questions
+    if (!args.isGenerating && args.questions.length > 0) {
+      await ctx.db.insert("testResponses", {
+        userId: user._id,
+        testId,
+        conversationId: args.conversationId,
+        answers: "{}",
+        score: 0,
+        totalQuestions: args.questions.length,
+        isCompleted: false,
+        submittedAt: now,
+      });
+    }
 
     return testId;
   },
