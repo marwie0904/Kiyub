@@ -365,6 +365,7 @@ Output valid JSON only, no additional text or formatting.`;
     // Complete the test generation
     await convex.mutation(api.tests.completeGeneration, {
       testId,
+      title: testData.title,
       questions: testData.questions,
     });
 
