@@ -7,7 +7,7 @@ import { Id } from "convex/_generated/dataModel";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Sidebar } from "@/components/sidebar";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -141,6 +141,7 @@ export default function ChatsPage() {
           </Button>
         </SheetTrigger>
         <SheetContent side="left" className="w-[280px] p-0">
+          <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
           <Sidebar
             activeConversationId={activeConversationId}
             onSelectConversation={handleSelectConversation}
@@ -156,14 +157,14 @@ export default function ChatsPage() {
             variant="ghost"
             size="icon"
             onClick={toggleSidebar}
-            className="absolute left-4 top-4 z-10 h-8 w-8 hover:bg-black/10 dark:hover:bg-white/5"
+            className="absolute left-4 top-4 z-50 h-8 w-8 hover:bg-black/10 dark:hover:bg-white/5"
           >
             <PanelLeft className="h-5 w-5 text-foreground" />
           </Button>
         )}
 
         {/* Header */}
-        <div className="border-b border-border bg-card px-8 py-6">
+        <div className={`border-b border-border bg-card py-6 transition-all duration-300 ${isSidebarCollapsed ? 'pl-16 pr-8' : 'pl-16 pr-8 md:pl-8 md:pr-8'}`}>
           <h1 className="text-3xl font-bold mb-4">Chats</h1>
 
           {/* Search Bar */}

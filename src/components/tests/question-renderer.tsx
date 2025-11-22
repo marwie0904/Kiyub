@@ -28,96 +28,105 @@ export function QuestionRenderer({
 }: QuestionRendererProps) {
   const [isFlipped, setIsFlipped] = useState(false);
 
-  const renderMultipleChoice = () => (
-    <div className="space-y-4">
-      <div className="text-lg font-medium select-text prose prose-invert max-w-none prose-sm">
-        <ReactMarkdown
-          remarkPlugins={[[remarkMath, { singleDollarTextMath: true }], remarkGfm]}
-          rehypePlugins={[
-            [rehypeKatex, {
-              strict: false,
-              trust: true,
-              throwOnError: false
-            }]
-          ]}
+  const renderMultipleChoice = () => {
+    const isUserAnswerCorrect = showCorrectAnswer && answer === question.correctAnswer;
+    const hasWrongAnswer = showCorrectAnswer && answer && answer !== question.correctAnswer;
+
+    return (
+      <div className="space-y-4">
+        <div className="text-lg font-medium select-text prose prose-invert max-w-none prose-sm">
+          <ReactMarkdown
+            remarkPlugins={[[remarkMath, { singleDollarTextMath: true }], remarkGfm]}
+            rehypePlugins={[
+              [rehypeKatex, {
+                strict: false,
+                trust: true,
+                throwOnError: false
+              }]
+            ]}
+          >
+            {question.question || ""}
+          </ReactMarkdown>
+        </div>
+
+        <RadioGroup
+          value={typeof answer === "string" ? answer : ""}
+          onValueChange={onAnswerChange}
+          disabled={showCorrectAnswer}
         >
-          {question.question || ""}
-        </ReactMarkdown>
-      </div>
+          <div className="space-y-3">
+            {question.options?.map((option, index) => {
+              const isCorrectAnswer = option === question.correctAnswer;
+              const isSelected = answer === option;
+              const isWrong = showCorrectAnswer && isSelected && !isCorrectAnswer;
 
-      <RadioGroup
-        value={typeof answer === "string" ? answer : ""}
-        onValueChange={onAnswerChange}
-        disabled={showCorrectAnswer}
-      >
-        <div className="space-y-3">
-          {question.options?.map((option, index) => {
-            const isCorrect = showCorrectAnswer && option === question.correctAnswer;
-            const isSelected = answer === option;
-            const isWrong = showCorrectAnswer && isSelected && !isCorrect;
-
-            return (
-              <div
-                key={index}
-                className={`flex items-center space-x-3 p-3 rounded-md border ${
-                  isCorrect
-                    ? "bg-green-500/10 border-green-500"
-                    : isWrong
-                    ? "bg-red-500/10 border-red-500"
-                    : "border-border"
-                }`}
-              >
-                <RadioGroupItem value={option} id={`option-${index}`} />
-                <Label
-                  htmlFor={`option-${index}`}
-                  className="flex-1 cursor-pointer font-normal select-text prose prose-invert max-w-none prose-sm"
+              return (
+                <div
+                  key={index}
+                  className={`flex items-center space-x-3 p-3 rounded-md border ${
+                    showCorrectAnswer && isCorrectAnswer
+                      ? "bg-yellow-500/10 border-yellow-500"
+                      : showCorrectAnswer && isUserAnswerCorrect && isSelected
+                      ? "bg-green-500/10 border-green-500"
+                      : isWrong
+                      ? "bg-red-500/10 border-red-500"
+                      : "border-border"
+                  }`}
                 >
-                  <ReactMarkdown
-                    remarkPlugins={[[remarkMath, { singleDollarTextMath: true }], remarkGfm]}
-                    rehypePlugins={[
-                      [rehypeKatex, {
-                        strict: false,
-                        trust: true,
-                        throwOnError: false
-                      }]
-                    ]}
+                  <RadioGroupItem value={option} id={`option-${index}`} />
+                  <Label
+                    htmlFor={`option-${index}`}
+                    className="flex-1 cursor-pointer font-normal select-text prose prose-invert max-w-none prose-sm"
                   >
-                    {option}
-                  </ReactMarkdown>
-                </Label>
-                {isCorrect && (
-                  <span className="text-sm text-green-500 font-medium">✓ Correct</span>
-                )}
-                {isWrong && (
-                  <span className="text-sm text-red-500 font-medium">✗</span>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </RadioGroup>
-
-      {showCorrectAnswer && question.explanation && (
-        <div className="mt-4 p-4 bg-muted/50 rounded-md">
-          <p className="text-sm font-medium mb-1">Explanation:</p>
-          <div className="text-sm text-muted-foreground select-text prose prose-invert max-w-none prose-sm">
-            <ReactMarkdown
-              remarkPlugins={[[remarkMath, { singleDollarTextMath: true }], remarkGfm]}
-              rehypePlugins={[
-                [rehypeKatex, {
-                  strict: false,
-                  trust: true,
-                  throwOnError: false
-                }]
-              ]}
-            >
-              {question.explanation}
-            </ReactMarkdown>
+                    <ReactMarkdown
+                      remarkPlugins={[[remarkMath, { singleDollarTextMath: true }], remarkGfm]}
+                      rehypePlugins={[
+                        [rehypeKatex, {
+                          strict: false,
+                          trust: true,
+                          throwOnError: false
+                        }]
+                      ]}
+                    >
+                      {option}
+                    </ReactMarkdown>
+                  </Label>
+                  {showCorrectAnswer && isCorrectAnswer && (
+                    <span className="text-sm text-yellow-500 font-medium">
+                      {isUserAnswerCorrect ? "✓ Correct" : "Correct Answer"}
+                    </span>
+                  )}
+                  {isWrong && (
+                    <span className="text-sm text-red-500 font-medium">✗ Your Answer</span>
+                  )}
+                </div>
+              );
+            })}
           </div>
-        </div>
-      )}
-    </div>
-  );
+        </RadioGroup>
+
+        {showCorrectAnswer && question.explanation && (
+          <div className="mt-4 p-4 bg-muted/50 rounded-md">
+            <p className="text-sm font-medium mb-1">Explanation:</p>
+            <div className="text-sm text-muted-foreground select-text prose prose-invert max-w-none prose-sm">
+              <ReactMarkdown
+                remarkPlugins={[[remarkMath, { singleDollarTextMath: true }], remarkGfm]}
+                rehypePlugins={[
+                  [rehypeKatex, {
+                    strict: false,
+                    trust: true,
+                    throwOnError: false
+                  }]
+                ]}
+              >
+                {question.explanation}
+              </ReactMarkdown>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const renderWrittenAnswer = () => (
     <div className="space-y-4">
@@ -159,6 +168,8 @@ export function QuestionRenderer({
     // Replace ____ or _____ with an input field
     if (!question.question) return null;
     const parts = question.question.split(/____+/);
+    const isCorrect = showCorrectAnswer &&
+      answer?.toString().toLowerCase().trim() === question.correctAnswer?.toString().toLowerCase().trim();
 
     return (
       <div className="space-y-4">
@@ -176,8 +187,7 @@ export function QuestionRenderer({
                   disabled={showCorrectAnswer}
                   className={`inline-block w-48 h-10 ${
                     showCorrectAnswer
-                      ? answer?.toString().toLowerCase().trim() ===
-                        question.correctAnswer?.toString().toLowerCase().trim()
+                      ? isCorrect
                         ? "bg-green-500/10 border-green-500"
                         : "bg-red-500/10 border-red-500"
                       : ""
@@ -190,8 +200,23 @@ export function QuestionRenderer({
 
         {showCorrectAnswer && (
           <div className="space-y-3 mt-6">
-            <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-md">
-              <p className="text-sm font-medium mb-1 text-green-600">
+            {!isCorrect && answer && (
+              <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-md">
+                <p className="text-sm font-medium mb-1 text-red-600">
+                  Your Answer:
+                </p>
+                <p className="text-base font-medium">{answer}</p>
+              </div>
+            )}
+
+            <div className={`p-4 rounded-md ${
+              isCorrect
+                ? "bg-green-500/10 border border-green-500/20"
+                : "bg-yellow-500/10 border border-yellow-500/20"
+            }`}>
+              <p className={`text-sm font-medium mb-1 ${
+                isCorrect ? "text-green-600" : "text-yellow-600"
+              }`}>
                 Correct Answer:
               </p>
               <p className="text-base font-medium">{question.correctAnswer}</p>

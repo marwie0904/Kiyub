@@ -202,18 +202,31 @@ export function ProjectDetail({ projectId, initialConversationId }: ProjectDetai
 
   if (!project) {
     return (
-      <div className="flex h-screen overflow-hidden">
-        {/* Left Sidebar */}
-        <aside className={`transition-all duration-300 ${isLeftSidebarCollapsed ? 'w-0' : 'w-[280px]'}`}>
-          <div className={`transition-all duration-300 ${isLeftSidebarCollapsed ? 'opacity-0 -translate-x-full' : 'opacity-100 translate-x-0'}`}>
-            <Sidebar
-              activeConversationId={activeConversationId}
-              onSelectConversation={handleSelectConversation}
-              onNewChat={handleNewChat}
-              onToggleCollapse={toggleLeftSidebar}
-              isCollapsed={isLeftSidebarCollapsed}
-            />
-          </div>
+      <div className="flex h-screen overflow-hidden relative">
+        {/* Backdrop overlay for mobile when sidebar is open */}
+        {!isLeftSidebarCollapsed && (
+          <div
+            className="fixed inset-0 bg-black/50 z-40 md:hidden"
+            onClick={toggleLeftSidebar}
+          />
+        )}
+
+        {/* Left Sidebar - Overlay on mobile, beside content on larger screens */}
+        <aside className={`
+          fixed md:relative
+          inset-y-0 left-0
+          z-50 md:z-auto
+          w-[280px]
+          transition-transform duration-300 ease-in-out md:transition-all
+          ${isLeftSidebarCollapsed ? '-translate-x-full md:translate-x-0 md:w-0' : 'translate-x-0 md:w-[280px]'}
+        `}>
+          <Sidebar
+            activeConversationId={activeConversationId}
+            onSelectConversation={handleSelectConversation}
+            onNewChat={handleNewChat}
+            onToggleCollapse={toggleLeftSidebar}
+            isCollapsed={isLeftSidebarCollapsed}
+          />
         </aside>
 
         {/* Main Content Skeleton */}
@@ -423,18 +436,31 @@ export function ProjectDetail({ projectId, initialConversationId }: ProjectDetai
   }
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      {/* Left Sidebar */}
-      <aside className={`transition-all duration-300 ${isLeftSidebarCollapsed ? 'w-0' : 'w-[280px]'}`}>
-        <div className={`transition-all duration-300 ${isLeftSidebarCollapsed ? 'opacity-0 -translate-x-full' : 'opacity-100 translate-x-0'}`}>
-          <Sidebar
-            activeConversationId={activeConversationId}
-            onSelectConversation={handleSelectConversation}
-            onNewChat={handleNewChat}
-            onToggleCollapse={toggleLeftSidebar}
-            isCollapsed={isLeftSidebarCollapsed}
-          />
-        </div>
+    <div className="flex h-screen overflow-hidden relative">
+      {/* Backdrop overlay for mobile when sidebar is open */}
+      {!isLeftSidebarCollapsed && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={toggleLeftSidebar}
+        />
+      )}
+
+      {/* Left Sidebar - Overlay on mobile, beside content on larger screens */}
+      <aside className={`
+        fixed md:relative
+        inset-y-0 left-0
+        z-50 md:z-auto
+        w-[280px]
+        transition-transform duration-300 ease-in-out md:transition-all
+        ${isLeftSidebarCollapsed ? '-translate-x-full md:translate-x-0 md:w-0' : 'translate-x-0 md:w-[280px]'}
+      `}>
+        <Sidebar
+          activeConversationId={activeConversationId}
+          onSelectConversation={handleSelectConversation}
+          onNewChat={handleNewChat}
+          onToggleCollapse={toggleLeftSidebar}
+          isCollapsed={isLeftSidebarCollapsed}
+        />
       </aside>
 
       {/* Main Content */}

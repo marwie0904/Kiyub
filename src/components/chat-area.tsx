@@ -113,6 +113,8 @@ export function ChatArea({ conversationId, isSidebarCollapsed = false, onStreami
   const [messages, setMessages] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [isAnalyzingFiles, setIsAnalyzingFiles] = useState(false);
+  const [analyzingFileCount, setAnalyzingFileCount] = useState(0);
   const [retryAttempt, setRetryAttempt] = useState(0);
   const [hasError, setHasError] = useState(false);
 
@@ -320,6 +322,22 @@ export function ChatArea({ conversationId, isSidebarCollapsed = false, onStreami
             try {
               metadata = JSON.parse(line.substring(2));
               console.log('📊 [Stream] Received metadata:', metadata);
+
+              // Update the assistant message with metadata immediately
+              if (streamingConversationRef.current === targetConversationId) {
+                setMessages(prev =>
+                  prev.map(m =>
+                    m.id === assistantId
+                      ? {
+                          ...m,
+                          searchMetadata: metadata.searchMetadata,
+                          tokenUsage: metadata.usage
+                        }
+                      : m
+                  )
+                );
+                console.log('✅ [Stream] Updated message with metadata');
+              }
             } catch (e) {
               console.warn('Failed to parse metadata:', line);
             }
@@ -628,6 +646,20 @@ export function ChatArea({ conversationId, isSidebarCollapsed = false, onStreami
       // Upload files if any are attached
       if (messagesToUpload.length > 0) {
         setIsProcessingFiles(true);
+
+        // Start analyzing files phase
+        setIsAnalyzingFiles(true);
+        setAnalyzingFileCount(messagesToUpload.length);
+
+        // Calculate analyzing duration: 2.5s per file, minimum 5s
+        const analyzingDuration = Math.max(5000, messagesToUpload.length * 2500);
+
+        // Wait for the analyzing duration before proceeding
+        await new Promise(resolve => setTimeout(resolve, analyzingDuration));
+
+        // End analyzing phase
+        setIsAnalyzingFiles(false);
+
         const uploadResult = await uploadFilesToConvex(messagesToUpload, generateUploadUrl);
 
         if (!uploadResult.success) {
@@ -771,7 +803,7 @@ export function ChatArea({ conversationId, isSidebarCollapsed = false, onStreami
       <div className="relative flex h-full flex-col bg-background overflow-hidden">
       {/* Header */}
       {conversationId && (
-        <div className={`flex items-center justify-between pt-4 pb-4 border-b border-border/40 flex-shrink-0 transition-all duration-300 ${isSidebarCollapsed ? 'pl-16 pr-8' : 'px-8'}`}>
+        <div className={`flex items-center justify-between pt-4 pb-4 border-b border-border/40 flex-shrink-0 transition-all duration-300 ${isSidebarCollapsed ? 'pl-16 pr-8' : 'pl-16 pr-8 md:pl-8 md:pr-8'}`}>
           {isConversationLoading ? (
             <>
               <Skeleton className="h-7 w-48" />
@@ -819,7 +851,7 @@ export function ChatArea({ conversationId, isSidebarCollapsed = false, onStreami
 
       {/* Messages Area */}
       <ScrollArea className="flex-1" viewportRef={scrollViewportRef}>
-        <div className="mx-auto max-w-2xl space-y-6 px-8 py-8 pb-48">
+        <div className="mx-auto w-full max-w-2xl min-w-0 space-y-6 px-4 md:px-8 py-8 pb-48 overflow-x-auto">
           {isConversationLoading ? (
             // Show skeleton while loading
             [1, 2, 3].map((i) => (
@@ -858,7 +890,14 @@ export function ChatArea({ conversationId, isSidebarCollapsed = false, onStreami
           )}
           {isLoading && !isStreaming && (
             <>
-              {hasError && retryAttempt > 0 && retryAttempt < 3 ? (
+              {isAnalyzingFiles ? (
+                <LoadingWithText
+                  size="sm"
+                  speed="fast"
+                  variant="yellow"
+                  customText={analyzingFileCount === 1 ? "analyzing file" : "analyzing files"}
+                />
+              ) : hasError && retryAttempt > 0 && retryAttempt < 3 ? (
                 <LoadingWithText
                   size="sm"
                   speed="fast"
@@ -879,8 +918,8 @@ export function ChatArea({ conversationId, isSidebarCollapsed = false, onStreami
       </ScrollArea>
 
       {/* Floating Input Area */}
-      <div className="pointer-events-none absolute bottom-0 left-0 right-0 flex justify-center px-8 pb-6">
-        <div className="pointer-events-auto w-full max-w-2xl flex flex-col gap-2">
+      <div className="pointer-events-none absolute bottom-0 left-0 right-0 flex justify-center px-4 md:px-8 pb-6">
+        <div className="pointer-events-auto w-full max-w-2xl flex flex-col gap-2 overflow-hidden">
           {/* Token Limit Warning Banner */}
           {tokenCount?.isLimitReached && (
             <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg px-4 py-3 text-sm">

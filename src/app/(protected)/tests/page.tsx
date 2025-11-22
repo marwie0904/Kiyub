@@ -258,14 +258,120 @@ export default function TestsPage() {
                             onClick={() => handleTestClick(test)}
                             className={`block ${test.isGenerating ? 'cursor-not-allowed' : 'cursor-pointer'}`}
                           >
-                            <div className={`group p-4 md:p-6 rounded-lg border border-border/40 transition-all ${!test.isGenerating && 'hover:border-border hover:bg-accent/5'}`}>
-                          <div className="flex items-center gap-3 md:gap-6">
-                            {/* Large Icon */}
-                            <div className="flex-shrink-0 hidden sm:block">
+                            <div className={`group p-3 md:p-6 rounded-lg border border-border/40 transition-all ${!test.isGenerating && 'hover:border-border hover:bg-accent/5'}`}>
+                          {/* Mobile Layout: Compact inline layout */}
+                          <div className="md:hidden space-y-2">
+                            {/* Top row: Icon + Badges */}
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {/* Small icon inline with badges */}
+                              <div className="flex-shrink-0">
+                                {test.isGenerating ? (
+                                  <div className="h-5 w-5 rounded flex items-center justify-center overflow-hidden">
+                                    <CubeLoader
+                                      size="sm"
+                                      variant={test.generationStatus === "uploading" ? "yellow" : "blue"}
+                                    />
+                                  </div>
+                                ) : (
+                                  <>
+                                    {testType === "flashcard" && (
+                                      <div className="h-5 w-5 rounded bg-primary flex items-center justify-center">
+                                        <Layers className="h-3 w-3 text-primary-foreground" />
+                                      </div>
+                                    )}
+                                    {testType === "multiple_choice" && (
+                                      <div className="h-5 w-5 rounded bg-primary flex items-center justify-center">
+                                        <CheckSquare className="h-3 w-3 text-primary-foreground" />
+                                      </div>
+                                    )}
+                                    {testType === "mixed" && (
+                                      <div className="h-5 w-5 rounded bg-primary flex items-center justify-center">
+                                        <ListChecks className="h-3 w-3 text-primary-foreground" />
+                                      </div>
+                                    )}
+                                  </>
+                                )}
+                              </div>
+
+                              {/* Badges */}
+                              {test.isGenerating ? (
+                                <Badge
+                                  variant="outline"
+                                  className={`text-[10px] animate-pulse px-1.5 py-0 ${
+                                    test.generationStatus === "uploading"
+                                      ? "text-yellow-500 border-yellow-500"
+                                      : "text-blue-500 border-blue-500"
+                                  }`}
+                                >
+                                  {test.generationStatus === "uploading" ? "Uploading..." : "Generating..."}
+                                </Badge>
+                              ) : (
+                                <>
+                                  {testType === "flashcard" && (
+                                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                                      Flashcard
+                                    </Badge>
+                                  )}
+                                  {testType === "multiple_choice" && (
+                                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                                      MC
+                                    </Badge>
+                                  )}
+                                  {testType === "mixed" && (
+                                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                                      Mixed
+                                    </Badge>
+                                  )}
+                                  {test.hasResponse && !test.isCompleted && (
+                                    <Badge variant="outline" className="text-[10px] text-yellow-500 border-yellow-500 px-1.5 py-0">
+                                      Incomplete
+                                    </Badge>
+                                  )}
+                                  {test.isCompleted && (
+                                    <>
+                                      <Badge variant="outline" className="text-[10px] text-green-500 border-green-500 px-1.5 py-0">
+                                        Complete
+                                      </Badge>
+                                      {test.score !== undefined && test.totalQuestions !== undefined && test.totalQuestions > 0 && (
+                                        <Badge variant="outline" className="text-[10px] text-blue-500 border-blue-500 px-1.5 py-0">
+                                          {Math.round((test.score / test.totalQuestions) * 100)}%
+                                        </Badge>
+                                      )}
+                                    </>
+                                  )}
+                                </>
+                              )}
+                            </div>
+
+                            {/* Title */}
+                            <h3 className="text-sm font-medium line-clamp-2 break-words pr-2">
+                              {test.title}
+                            </h3>
+
+                            {/* Metadata */}
+                            <div className="text-[10px] text-muted-foreground flex items-center gap-1.5">
+                              <span className="whitespace-nowrap">
+                                {test.isGenerating
+                                  ? test.generationStatus === "uploading"
+                                    ? "Uploading..."
+                                    : "Generating..."
+                                  : `${test.questions.length} Q`}
+                              </span>
+                              <span>•</span>
+                              <span className="truncate">
+                                {formatDate(test.createdAt)}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Desktop Layout: Icon on left, content on right */}
+                          <div className="hidden md:flex gap-4">
+                            {/* Icon on the left */}
+                            <div className="flex-shrink-0">
                               {test.isGenerating ? (
                                 <div className="h-14 w-14 rounded-lg flex items-center justify-center overflow-hidden">
                                   <CubeLoader
-                                    size="md"
+                                    size="sm"
                                     variant={test.generationStatus === "uploading" ? "yellow" : "blue"}
                                   />
                                 </div>
@@ -290,50 +396,50 @@ export default function TestsPage() {
                               )}
                             </div>
 
-                            {/* Content */}
-                            <div className="flex-1 min-w-0 overflow-hidden">
-                              {/* Badges */}
-                              <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                            {/* Content on the right */}
+                            <div className="flex-1 space-y-2">
+                              {/* Badges row */}
+                              <div className="flex items-center gap-2 flex-wrap">
                                 {test.isGenerating ? (
                                   <Badge
                                     variant="outline"
-                                    className={`text-xs animate-pulse ${
+                                    className={`text-xs animate-pulse px-2 py-0.5 ${
                                       test.generationStatus === "uploading"
                                         ? "text-yellow-500 border-yellow-500"
                                         : "text-blue-500 border-blue-500"
                                     }`}
                                   >
-                                    {test.generationStatus === "uploading" ? "Uploading files..." : "Generating test..."}
+                                    {test.generationStatus === "uploading" ? "Uploading..." : "Generating..."}
                                   </Badge>
                                 ) : (
                                   <>
                                     {testType === "flashcard" && (
-                                      <Badge variant="secondary" className="text-xs">
+                                      <Badge variant="secondary" className="text-xs px-2 py-0.5">
                                         Flashcard
                                       </Badge>
                                     )}
                                     {testType === "multiple_choice" && (
-                                      <Badge variant="secondary" className="text-xs">
+                                      <Badge variant="secondary" className="text-xs px-2 py-0.5">
                                         Multiple Choice
                                       </Badge>
                                     )}
                                     {testType === "mixed" && (
-                                      <Badge variant="secondary" className="text-xs">
+                                      <Badge variant="secondary" className="text-xs px-2 py-0.5">
                                         Mixed
                                       </Badge>
                                     )}
                                     {test.hasResponse && !test.isCompleted && (
-                                      <Badge variant="outline" className="text-xs text-yellow-500 border-yellow-500">
+                                      <Badge variant="outline" className="text-xs text-yellow-500 border-yellow-500 px-2 py-0.5">
                                         Incomplete
                                       </Badge>
                                     )}
                                     {test.isCompleted && (
                                       <>
-                                        <Badge variant="outline" className="text-xs text-green-500 border-green-500">
+                                        <Badge variant="outline" className="text-xs text-green-500 border-green-500 px-2 py-0.5">
                                           Complete
                                         </Badge>
                                         {test.score !== undefined && test.totalQuestions !== undefined && test.totalQuestions > 0 && (
-                                          <Badge variant="outline" className="text-xs text-blue-500 border-blue-500">
+                                          <Badge variant="outline" className="text-xs text-blue-500 border-blue-500 px-2 py-0.5">
                                             {Math.round((test.score / test.totalQuestions) * 100)}%
                                           </Badge>
                                         )}
@@ -344,13 +450,13 @@ export default function TestsPage() {
                               </div>
 
                               {/* Title */}
-                              <h3 className="text-base md:text-lg font-medium truncate">
+                              <h3 className="text-lg font-medium line-clamp-2 break-words pr-2">
                                 {test.title}
                               </h3>
 
-                              {/* Metadata (mobile) */}
-                              <div className="sm:hidden text-xs text-muted-foreground mt-1 space-x-2">
-                                <span>
+                              {/* Metadata */}
+                              <div className="text-xs text-muted-foreground flex items-center gap-2">
+                                <span className="whitespace-nowrap">
                                   {test.isGenerating
                                     ? test.generationStatus === "uploading"
                                       ? "Uploading..."
@@ -358,23 +464,9 @@ export default function TestsPage() {
                                     : `${test.questions.length} Q`}
                                 </span>
                                 <span>•</span>
-                                <span>
+                                <span className="truncate">
                                   {formatDate(test.createdAt)}
                                 </span>
-                              </div>
-                            </div>
-
-                            {/* Metadata (desktop) */}
-                            <div className="hidden sm:flex flex-shrink-0 text-right text-sm text-muted-foreground space-y-1 flex-col">
-                              <div>
-                                {test.isGenerating
-                                  ? test.generationStatus === "uploading"
-                                    ? "Uploading files..."
-                                    : "Generating test..."
-                                  : `${test.questions.length} question${test.questions.length !== 1 ? "s" : ""}`}
-                              </div>
-                              <div>
-                                {formatDate(test.createdAt)}
                               </div>
                             </div>
                           </div>

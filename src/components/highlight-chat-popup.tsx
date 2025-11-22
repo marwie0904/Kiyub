@@ -190,7 +190,7 @@ export function HighlightChatPopup({
         className="flex items-center justify-between border-b border-border p-3 cursor-move select-none"
         onMouseDown={handleMouseDown}
       >
-        <h3 className="text-sm font-semibold">Little Freire</h3>
+        <h3 className="text-sm font-semibold">Kiyub Root</h3>
         <Button
           variant="ghost"
           size="icon"

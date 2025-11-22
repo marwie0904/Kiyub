@@ -8,6 +8,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { CubeLoader } from "@/components/ui/cube-loader";
 import { useRouter } from "next/navigation";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export function SignIn() {
   const { signIn } = useAuthActions();
@@ -34,6 +35,11 @@ export function SignIn() {
 
   return (
     <div className="flex min-h-screen relative overflow-hidden">
+      {/* Theme Toggle - Top Right */}
+      <div className="absolute top-4 right-4 z-50">
+        <ThemeToggle />
+      </div>
+
       {/* Background gradient circle spanning both sides */}
       <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-primary/5 rounded-full blur-3xl pointer-events-none" />
 

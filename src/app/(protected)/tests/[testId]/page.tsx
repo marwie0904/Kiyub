@@ -34,7 +34,7 @@ export default function TestReviewPage() {
     testId ? { testId: testId as Id<"tests"> } : "skip"
   );
 
-  // Load conversation messages for little freire context
+  // Load conversation messages for Kiyub Root context
   const conversationMessages = useQuery(
     api.messages.getAll,
     test?.conversationId ? { conversationId: test.conversationId } : "skip"

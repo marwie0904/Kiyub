@@ -35,18 +35,31 @@ export default function CanvasPage() {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      {/* Sidebar */}
-      <aside className={`transition-all duration-300 ${isSidebarCollapsed ? 'w-0' : 'w-[280px]'}`}>
-        <div className={`transition-all duration-300 ${isSidebarCollapsed ? 'opacity-0 -translate-x-full' : 'opacity-100 translate-x-0'}`}>
-          <Sidebar
-            activeConversationId={activeConversationId}
-            onSelectConversation={handleSelectConversation}
-            onNewChat={handleNewChat}
-            onToggleCollapse={toggleSidebar}
-            isCollapsed={isSidebarCollapsed}
-          />
-        </div>
+    <div className="flex h-screen overflow-hidden relative">
+      {/* Backdrop overlay for mobile when sidebar is open */}
+      {!isSidebarCollapsed && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={toggleSidebar}
+        />
+      )}
+
+      {/* Sidebar - Overlay on mobile, beside content on larger screens */}
+      <aside className={`
+        fixed md:relative
+        inset-y-0 left-0
+        z-50 md:z-auto
+        w-[280px]
+        transition-transform duration-300 ease-in-out md:transition-all
+        ${isSidebarCollapsed ? '-translate-x-full md:translate-x-0 md:w-0' : 'translate-x-0 md:w-[280px]'}
+      `}>
+        <Sidebar
+          activeConversationId={activeConversationId}
+          onSelectConversation={handleSelectConversation}
+          onNewChat={handleNewChat}
+          onToggleCollapse={toggleSidebar}
+          isCollapsed={isSidebarCollapsed}
+        />
       </aside>
 
       {/* Main Content */}

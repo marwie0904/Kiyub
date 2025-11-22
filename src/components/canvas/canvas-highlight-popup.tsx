@@ -215,7 +215,7 @@ export function CanvasHighlightPopup({
         className="flex items-center justify-between border-b border-border p-3 cursor-move select-none"
         onMouseDown={handleMouseDown}
       >
-        <h3 className="text-sm font-semibold">Little Freire</h3>
+        <h3 className="text-sm font-semibold">Kiyub Root</h3>
         <div className="flex items-center gap-1">
           <Button
             variant="ghost"

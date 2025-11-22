@@ -374,14 +374,14 @@ export const Message = memo(function Message({
           </div>
         )}
         {displayContent && (
-          <div className="rounded-2xl p-4 flex gap-3 bg-message-user">
+          <div className="rounded-2xl p-4 flex gap-3 bg-message-user max-w-full overflow-hidden">
             <Avatar className="h-8 w-8 shrink-0">
               <AvatarFallback className="bg-primary text-xs text-primary-foreground">
                 {userInitials}
               </AvatarFallback>
             </Avatar>
-            <div className="flex-1">
-              <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+            <div className="flex-1 min-w-0 max-w-full overflow-hidden">
+              <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground overflow-wrap-anywhere">
                 {displayContent}
               </p>
             </div>
@@ -453,7 +453,7 @@ export const Message = memo(function Message({
       conversationContext={conversationContext}
       model={model}
     >
-      <div className="space-y-3" data-message-id={id}>
+      <div className="space-y-3 w-full max-w-full min-w-0" data-message-id={id}>
         {/* Web Search Indicator - Show when streaming and search was used, or after done with metadata */}
         {isStreaming && hasWebSearch && (
           <div className="bg-secondary/30 rounded-lg px-3 py-2 border border-border/40">
@@ -467,7 +467,7 @@ export const Message = memo(function Message({
           </div>
         )}
 
-        <div className="prose prose-invert max-w-none prose-sm">
+        <div className="prose prose-invert !max-w-none prose-sm w-full min-w-0 overflow-x-auto">
           <ReactMarkdown
             remarkPlugins={[[remarkMath, { singleDollarTextMath: true }], remarkGfm]}
             rehypePlugins={[
@@ -480,9 +480,15 @@ export const Message = memo(function Message({
             ]}
             components={{
               table: ({ node, ...props }) => (
-                <div className="overflow-x-auto my-4">
-                  <table {...props} />
+                <div className="overflow-x-auto my-4 max-w-full -webkit-overflow-scrolling-touch rounded-lg border border-border/40">
+                  <table className="w-full" {...props} />
                 </div>
+              ),
+              pre: ({ node, ...props }) => (
+                <pre className="overflow-x-auto max-w-full" {...props} />
+              ),
+              p: ({ node, ...props }) => (
+                <p className="max-w-full overflow-visible" {...props} />
               ),
             }}
           >

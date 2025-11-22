@@ -7,7 +7,7 @@ import { getRandomLoadingWord, getNextLoadingWord } from "@/lib/loading-words";
 interface LoadingWithTextProps {
   size?: "sm" | "md" | "lg";
   speed?: "slow" | "normal" | "fast";
-  variant?: "primary" | "muted" | "accent" | "error";
+  variant?: "primary" | "muted" | "accent" | "error" | "yellow" | "blue";
   className?: string;
   customText?: string; // Override the rotating word with custom text
 }
@@ -20,6 +20,7 @@ export function LoadingWithText({
   customText,
 }: LoadingWithTextProps) {
   const [currentWord, setCurrentWord] = useState(() => getRandomLoadingWord());
+  const [dotCount, setDotCount] = useState(0);
 
   useEffect(() => {
     // Skip word rotation if custom text is provided
@@ -41,14 +42,28 @@ export function LoadingWithText({
     return () => clearTimeout(timeoutId);
   }, [customText]);
 
+  // Animate dots (1, 2, 3, repeat)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setDotCount((prev) => (prev + 1) % 4);
+    }, 500);
+
+    return () => clearInterval(interval);
+  }, []);
+
   const displayText = customText || currentWord;
-  const textColorClass = variant === "error" ? "text-red-600 dark:text-red-500" : "text-primary";
+  const dots = '.'.repeat(dotCount);
+  const textColorClass =
+    variant === "error" ? "text-red-600 dark:text-red-500" :
+    variant === "yellow" ? "text-yellow-600 dark:text-yellow-500" :
+    variant === "blue" ? "text-blue-600 dark:text-blue-500" :
+    "text-primary";
 
   return (
     <div className={`flex items-center gap-3 ${className}`}>
       <CubeLoader size={size} speed={speed} variant={variant} />
-      <span className={`text-sm font-medium animate-in fade-in duration-300 ${textColorClass}`}>
-        {displayText}
+      <span className={`text-sm font-medium ${textColorClass}`}>
+        {displayText}{dots}
       </span>
     </div>
   );

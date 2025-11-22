@@ -153,8 +153,7 @@ CHOOSE THE RIGHT NUMBER OF SOURCES (numResults parameter):
 MAXIMIZE INSIGHT WITH MULTIPLE SEARCHES:
 - With ${maxToolCalls} searches available, you can cross-verify information
 - Use your first search for broad context, subsequent searches for specific details or verification
-- ONLY use webSearch when absolutely necessary for current/recent information
-- Prefer answering from existing knowledge when possible`
+- Use webSearch when the user's request asks for latest, new, or recent information, since your knowledge cutoff is January 2025`
     : `QUICK MODE - You have ONLY 4 iterations maximum. By iteration 3, you MUST provide a final response.
 
 FAST SEARCH STRATEGY:
@@ -168,8 +167,7 @@ CHOOSE THE RIGHT NUMBER OF SOURCES (numResults parameter):
 - **8-10 Sources**: Deep research (academic, market analysis, complex topics)
 
 MINIMIZE TOOL CALLS:
-- ONLY use webSearch when absolutely necessary for current/recent information
-- Prefer answering from existing knowledge when possible
+- Use webSearch when the user's request asks for latest, new, or recent information, since your knowledge cutoff is January 2025
 - Make your single search comprehensive and thorough`;
 
   const systemPrompt = {
@@ -470,8 +468,7 @@ CHOOSE THE RIGHT NUMBER OF SOURCES (numResults parameter):
 MAXIMIZE INSIGHT WITH MULTIPLE SEARCHES:
 - With ${maxToolCalls} searches available, you can cross-verify information
 - Use your first search for broad context, subsequent searches for specific details or verification
-- ONLY use webSearch when absolutely necessary for current/recent information
-- Prefer answering from existing knowledge when possible`
+- Use webSearch when the user's request asks for latest, new, or recent information, since your knowledge cutoff is January 2025`
     : `QUICK MODE - You have ONLY 4 iterations maximum. By iteration 3, you MUST provide a final response.
 
 FAST SEARCH STRATEGY:
@@ -485,8 +482,7 @@ CHOOSE THE RIGHT NUMBER OF SOURCES (numResults parameter):
 - **8-10 Sources**: Deep research (academic, market analysis, complex topics)
 
 MINIMIZE TOOL CALLS:
-- ONLY use webSearch when absolutely necessary for current/recent information
-- Prefer answering from existing knowledge when possible
+- Use webSearch when the user's request asks for latest, new, or recent information, since your knowledge cutoff is January 2025
 - Make your single search comprehensive and thorough`;
 
   const systemPrompt = {

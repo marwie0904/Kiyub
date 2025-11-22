@@ -170,8 +170,7 @@ CHOOSE THE RIGHT NUMBER OF SOURCES (numResults parameter):
 - Long-form investigative questions
 
 MINIMIZE TOOL CALLS:
-- ONLY use webSearch when absolutely necessary for current/recent information
-- Prefer answering from existing knowledge when possible
+- Use webSearch when the user's request asks for latest, new, or recent information, since your knowledge cutoff is January 2025
 - If you must search, make it count - use broad, comprehensive queries
 - You can only make 1 search, so make it comprehensive and thorough`
   };

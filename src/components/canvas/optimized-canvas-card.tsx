@@ -33,12 +33,14 @@ interface OptimizedCanvasCardProps {
   hoveredCard: Id<"canvasCards"> | null;
   isOnTop: boolean;
   onMouseDown: (e: React.MouseEvent, cardId: Id<"canvasCards">) => void;
+  onTouchStart?: (e: React.TouchEvent, cardId: Id<"canvasCards">) => void;
   onCardClick: (e: React.MouseEvent) => void;
   onMouseEnter: (cardId: Id<"canvasCards">) => void;
   onMouseLeave: () => void;
   onContentChange: (cardId: Id<"canvasCards">, content: string) => void;
   onEscapePress: () => void;
   onResizeStart: (e: React.MouseEvent, cardId: Id<"canvasCards">) => void;
+  onResizeTouchStart?: (e: React.TouchEvent, cardId: Id<"canvasCards">) => void;
   cardTextareaRef: (el: HTMLTextAreaElement | null, cardId: Id<"canvasCards">) => void;
   conversationContext?: any[];
   model?: string;
@@ -216,12 +218,14 @@ const OptimizedCanvasCardInner = memo(function OptimizedCanvasCardInner({
   hoveredCard,
   isOnTop,
   onMouseDown,
+  onTouchStart,
   onCardClick,
   onMouseEnter,
   onMouseLeave,
   onContentChange,
   onEscapePress,
   onResizeStart,
+  onResizeTouchStart,
   cardTextareaRef,
   zoomLevel,
   onZoomIn,
@@ -297,6 +301,12 @@ const OptimizedCanvasCardInner = memo(function OptimizedCanvasCardInner({
     onMouseDown(e, card._id);
   }, [card._id, onMouseDown]);
 
+  const handleCardTouchStart = useCallback((e: React.TouchEvent) => {
+    if (onTouchStart) {
+      onTouchStart(e, card._id);
+    }
+  }, [card._id, onTouchStart]);
+
   const handleCardMouseEnter = useCallback(() => {
     onMouseEnter(card._id);
   }, [card._id, onMouseEnter]);
@@ -358,6 +368,7 @@ const OptimizedCanvasCardInner = memo(function OptimizedCanvasCardInner({
         <div
         key={card._id}
         onMouseDown={handleCardMouseDown}
+        onTouchStart={handleCardTouchStart}
         onClick={onCardClick}
         onMouseEnter={handleCardMouseEnter}
         onMouseLeave={onMouseLeave}
@@ -407,6 +418,7 @@ const OptimizedCanvasCardInner = memo(function OptimizedCanvasCardInner({
                     boxSizing: 'border-box',
                     lineHeight: '1.5',
                     scrollMargin: 0,
+                    touchAction: 'pan-y',
                   }}
                 />
               </CanvasTextSelectionHandler>
@@ -424,6 +436,7 @@ const OptimizedCanvasCardInner = memo(function OptimizedCanvasCardInner({
                   boxSizing: 'border-box',
                   lineHeight: '1.5',
                   scrollMargin: 0,
+                  touchAction: 'pan-y',
                 }}
               />
             )
@@ -435,6 +448,7 @@ const OptimizedCanvasCardInner = memo(function OptimizedCanvasCardInner({
                 lineHeight: '1.5',
                 padding: 0,
                 margin: 0,
+                touchAction: 'pan-y',
               }}
             >
               {conversationContext && model && onCreateCardFromHighlight ? (
@@ -457,6 +471,7 @@ const OptimizedCanvasCardInner = memo(function OptimizedCanvasCardInner({
         <div
           data-resize-handle
           onMouseDown={(e) => onResizeStart(e, card._id)}
+          onTouchStart={(e) => onResizeTouchStart && onResizeTouchStart(e, card._id)}
           className="absolute bottom-0 right-0 h-6 w-6 cursor-nwse-resize opacity-0 group-hover:opacity-100 transition-opacity z-10"
           style={{
             background: `linear-gradient(135deg, transparent 0%, transparent 50%, hsl(var(--primary)) 50%, hsl(var(--primary)) 100%)`,

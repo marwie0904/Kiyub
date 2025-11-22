@@ -78,6 +78,7 @@ export default function CanvasDetailPage() {
 
   // Local state for all cards (performance optimization)
   const [localCards, setLocalCards] = useState<LocalCard[]>([]);
+  const [localConnections, setLocalConnections] = useState<any[]>([]);
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const [isProcessingFiles, setIsProcessingFiles] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -91,7 +92,8 @@ export default function CanvasDetailPage() {
   const [draggedCard, setDraggedCard] = useState<Id<"canvasCards"> | null>(null);
   const [isDraggingNew, setIsDraggingNew] = useState(false);
   const [cardDragStart, setCardDragStart] = useState({ x: 0, y: 0, cardX: 0, cardY: 0 });
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  // Initialize sidebar state - will be set based on viewport width in useEffect
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
   const [activeConversationId, setActiveConversationId] = useState<Id<"conversations"> | null>(null);
   const [resizingCard, setResizingCard] = useState<Id<"canvasCards"> | null>(null);
   const [resizeStart, setResizeStart] = useState({ x: 0, y: 0, width: 0, height: 0, cardX: 0, cardY: 0 });
@@ -176,6 +178,17 @@ export default function CanvasDetailPage() {
     updateViewportSize();
     window.addEventListener('resize', updateViewportSize);
     return () => window.removeEventListener('resize', updateViewportSize);
+  }, []);
+
+  // Initialize sidebar state based on viewport width (mobile = collapsed, desktop = open)
+  useEffect(() => {
+    const initializeSidebarState = () => {
+      // 768px is the 'md' breakpoint in Tailwind (matches md:relative in sidebar styles)
+      const isMobile = window.innerWidth < 768;
+      setIsSidebarCollapsed(isMobile);
+    };
+
+    initializeSidebarState();
   }, []);
 
   // Calculate visible cards (viewport culling for performance)
@@ -323,6 +336,13 @@ export default function CanvasDetailPage() {
     }
   }, [canvasCards, hasInitiallyLoaded, connections, calculateBranchNumbers]);
 
+  // Sync connections from Convex to local state
+  useEffect(() => {
+    if (connections) {
+      setLocalConnections(connections);
+    }
+  }, [connections]);
+
   // Log chatbox visibility changes
   useEffect(() => {
     const selectedCard = localCards.find(c => c._id === selectedCardId);
@@ -419,6 +439,41 @@ export default function CanvasDetailPage() {
     });
   };
 
+  // Touch handlers for card dragging
+  const handleCardTouchStart = (e: React.TouchEvent, cardId: Id<"canvasCards">) => {
+    if (resizingCard) return;
+
+    const target = e.target as HTMLElement;
+    if (target.hasAttribute('data-resize-handle')) return;
+
+    e.stopPropagation();
+
+    const card = localCards.find(c => c._id === cardId);
+    if (!card) return;
+
+    let element = target;
+    while (element && !element.hasAttribute('data-card-id')) {
+      element = element.parentElement as HTMLElement;
+    }
+    if (element) {
+      draggedCardElementRef.current = element;
+    }
+
+    setTopCardId(cardId);
+
+    isDraggingRef.current = true;
+    setIsDragging(false);
+    setDraggedCard(cardId);
+
+    const touch = e.touches[0];
+    setCardDragStart({
+      x: touch.clientX,
+      y: touch.clientY,
+      cardX: card.x,
+      cardY: card.y
+    });
+  };
+
   const handleCardMouseMove = (e: MouseEvent) => {
     if (!draggedCard || !draggedCardElementRef.current) return;
 
@@ -456,6 +511,46 @@ export default function CanvasDetailPage() {
       if (rafIdRef.current === null) {
         rafIdRef.current = requestAnimationFrame(() => {
           // Update local state so connections follow the card
+          setLocalCards(prev => prev.map(c =>
+            c._id === draggedCard ? { ...c, x: clampedX, y: clampedY } : c
+          ));
+
+          rafIdRef.current = null;
+        });
+      }
+    }
+  };
+
+  const handleCardTouchMove = (e: TouchEvent) => {
+    if (!draggedCard || !draggedCardElementRef.current) return;
+
+    const touch = e.touches[0];
+    const deltaX = touch.clientX - cardDragStart.x;
+    const deltaY = touch.clientY - cardDragStart.y;
+
+    const hasMoved = Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5;
+    if (hasMoved && !isDragging) {
+      setIsDragging(true);
+    }
+
+    if (isDragging || hasMoved) {
+      const newX = cardDragStart.cardX + deltaX / canvasZoom;
+      const newY = cardDragStart.cardY + deltaY / canvasZoom;
+
+      const card = localCards.find(c => c._id === draggedCard);
+      if (!card) return;
+
+      const clampedX = Math.max(0, Math.min(CANVAS_WIDTH - card.width, newX));
+      const clampedY = Math.max(0, Math.min(CANVAS_HEIGHT - card.height, newY));
+
+      const offsetX = clampedX - cardDragStart.cardX;
+      const offsetY = clampedY - cardDragStart.cardY;
+
+      latestDragPosition.current = { x: clampedX, y: clampedY };
+      dragOffsetRef.current = { x: offsetX, y: offsetY };
+
+      if (rafIdRef.current === null) {
+        rafIdRef.current = requestAnimationFrame(() => {
           setLocalCards(prev => prev.map(c =>
             c._id === draggedCard ? { ...c, x: clampedX, y: clampedY } : c
           ));
@@ -542,6 +637,11 @@ export default function CanvasDetailPage() {
       ));
       setHasUnsavedChanges(true);
     }
+  };
+
+  const handleCardTouchEnd = async () => {
+    // Reuse the same logic as mouse up
+    await handleCardMouseUp();
   };
 
   const handleNewCardDragStart = (e: React.DragEvent) => {
@@ -733,6 +833,52 @@ export default function CanvasDetailPage() {
       card._id === cardToSave ? { ...card, width: finalWidth, height: finalHeight } : card
     ));
     setHasUnsavedChanges(true);
+  };
+
+  // Touch handlers for resizing
+  const handleResizeTouchStart = (e: React.TouchEvent, cardId: Id<"canvasCards">) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const card = localCards.find(c => c._id === cardId);
+    if (card) {
+      const touch = e.touches[0];
+      isResizingRef.current = true;
+      setResizingCard(cardId);
+      setResizeStart({
+        x: touch.clientX,
+        y: touch.clientY,
+        width: card.width,
+        height: card.height,
+        cardX: card.x,
+        cardY: card.y,
+      });
+    }
+  };
+
+  const handleResizeTouchMove = (e: TouchEvent) => {
+    if (!resizingCard) return;
+
+    const touch = e.touches[0];
+    const deltaX = (touch.clientX - resizeStart.x) / canvasZoom;
+    const deltaY = (touch.clientY - resizeStart.y) / canvasZoom;
+
+    const newWidth = Math.max(150, resizeStart.width + deltaX);
+    const newHeight = Math.max(100, resizeStart.height + deltaY);
+
+    latestResizeDimensions.current = { width: newWidth, height: newHeight };
+
+    if (rafIdRef.current === null) {
+      rafIdRef.current = requestAnimationFrame(() => {
+        setLocalCards(prev => prev.map(card =>
+          card._id === resizingCard ? { ...card, width: newWidth, height: newHeight } : card
+        ));
+        rafIdRef.current = null;
+      });
+    }
+  };
+
+  const handleResizeTouchEnd = async () => {
+    await handleResizeEnd();
   };
 
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -975,6 +1121,16 @@ export default function CanvasDetailPage() {
         branchNumber,
       }]);
 
+      // INSTANTLY add connection to local state with tempId (for immediate arrow rendering)
+      const tempConnectionId = `temp-conn-${Date.now()}` as Id<"canvasConnections">;
+      setLocalConnections(prev => [...prev, {
+        _id: tempConnectionId,
+        canvasId,
+        sourceCardId: cardId,
+        targetCardId: tempId, // Use tempId so connection can find the card immediately
+        _creationTime: Date.now(),
+      }]);
+
       // Create in database in background
       const newCardId = await branchCard({
         sourceCardId: cardId,
@@ -987,12 +1143,22 @@ export default function CanvasDetailPage() {
         card._id === tempId ? { ...card, _id: newCardId } : card
       ));
 
-      // Create connection between cards
-      await createConnection({
+      // Update connection's targetCardId from tempId to newCardId
+      setLocalConnections(prev => prev.map(conn =>
+        conn._id === tempConnectionId ? { ...conn, targetCardId: newCardId } : conn
+      ));
+
+      // Create connection in database in background
+      const connectionId = await createConnection({
         canvasId,
         sourceCardId: cardId,
         targetCardId: newCardId,
       });
+
+      // Replace temp connection ID with real ID
+      setLocalConnections(prev => prev.map(conn =>
+        conn._id === tempConnectionId ? { ...conn, _id: connectionId } : conn
+      ));
     } catch (error) {
       console.error('Branch creation error:', error);
     }
@@ -1124,6 +1290,45 @@ export default function CanvasDetailPage() {
   };
 
   const handleCanvasPanEnd = () => {
+    setIsPanning(false);
+  };
+
+  // Touch handlers for canvas panning
+  const handleCanvasTouchStart = (e: React.TouchEvent) => {
+    const target = e.target as HTMLElement;
+    const isCanvasArea = target.hasAttribute('data-canvas-area');
+
+    if (isCanvasArea && e.touches.length === 1) {
+      // Exit edit mode when touching canvas
+      if (editingCardId) {
+        setEditingCardId(null);
+      }
+      setSelectedCardId(null);
+
+      e.stopPropagation();
+      setIsPanning(true);
+      const touch = e.touches[0];
+      setPanStart({ x: touch.clientX - (canvasOffset?.x || 0), y: touch.clientY - (canvasOffset?.y || 0) });
+    }
+  };
+
+  const handleCanvasTouchMove = (e: TouchEvent) => {
+    if (isPanning && canvasOffset && e.touches.length === 1) {
+      const touch = e.touches[0];
+      const newX = touch.clientX - panStart.x;
+      const newY = touch.clientY - panStart.y;
+
+      if (rafIdRef.current === null) {
+        rafIdRef.current = requestAnimationFrame(() => {
+          const clampedOffset = clampCanvasOffset(newX, newY, canvasZoom);
+          setCanvasOffset(clampedOffset);
+          rafIdRef.current = null;
+        });
+      }
+    }
+  };
+
+  const handleCanvasTouchEnd = () => {
     setIsPanning(false);
   };
 
@@ -1348,6 +1553,33 @@ export default function CanvasDetailPage() {
       const newCardX = sourceCard.x + sourceCard.width + 100;
       const newCardY = sourceCard.y;
 
+      // Generate temporary ID for instant local rendering
+      const tempId = `temp-${Date.now()}` as Id<"canvasCards">;
+
+      // INSTANTLY add to local state first (snappy UI)
+      setLocalCards(prev => [
+        ...prev,
+        {
+          _id: tempId,
+          x: newCardX,
+          y: newCardY,
+          width: 400,
+          height: 500,
+          content,
+        }
+      ]);
+
+      // INSTANTLY add connection to local state with tempId (for immediate arrow rendering)
+      const tempConnectionId = `temp-conn-${Date.now()}` as Id<"canvasConnections">;
+      setLocalConnections(prev => [...prev, {
+        _id: tempConnectionId,
+        canvasId,
+        sourceCardId: sourceCardId as Id<"canvasCards">,
+        targetCardId: tempId, // Use tempId so connection can find the card immediately
+        _creationTime: Date.now(),
+      }]);
+
+      // Create card in database in background
       const newCardId = await createCard({
         canvasId,
         x: newCardX,
@@ -1357,25 +1589,27 @@ export default function CanvasDetailPage() {
         content,
       });
 
-      // Immediately add the new card to local state
-      setLocalCards(prev => [
-        ...prev,
-        {
-          _id: newCardId,
-          x: newCardX,
-          y: newCardY,
-          width: 400,
-          height: 500,
-          content,
-        }
-      ]);
+      // Replace temp ID with real ID in local cards
+      setLocalCards(prev => prev.map(card =>
+        card._id === tempId ? { ...card, _id: newCardId } : card
+      ));
 
-      // Create connection between source card and new card
-      await createConnection({
+      // Update connection's targetCardId from tempId to newCardId
+      setLocalConnections(prev => prev.map(conn =>
+        conn._id === tempConnectionId ? { ...conn, targetCardId: newCardId } : conn
+      ));
+
+      // Create connection in database in background
+      const connectionId = await createConnection({
         canvasId,
         sourceCardId: sourceCardId as Id<"canvasCards">,
         targetCardId: newCardId,
       });
+
+      // Replace temp connection ID with real ID
+      setLocalConnections(prev => prev.map(conn =>
+        conn._id === tempConnectionId ? { ...conn, _id: connectionId } : conn
+      ));
     } catch (error) {
       console.error("Error creating card from highlight:", error);
     }
@@ -1389,34 +1623,52 @@ export default function CanvasDetailPage() {
     if (resizingCard) {
       window.addEventListener('mousemove', handleResizeMove, passiveOptions as any);
       window.addEventListener('mouseup', handleResizeEnd);
+      window.addEventListener('touchmove', handleResizeTouchMove, passiveOptions as any);
+      window.addEventListener('touchend', handleResizeTouchEnd);
     } else {
       window.removeEventListener('mousemove', handleResizeMove);
       window.removeEventListener('mouseup', handleResizeEnd);
+      window.removeEventListener('touchmove', handleResizeTouchMove);
+      window.removeEventListener('touchend', handleResizeTouchEnd);
     }
 
     if (isPanning) {
       window.addEventListener('mousemove', handleCanvasPanMove, passiveOptions as any);
       window.addEventListener('mouseup', handleCanvasPanEnd);
+      window.addEventListener('touchmove', handleCanvasTouchMove, passiveOptions as any);
+      window.addEventListener('touchend', handleCanvasTouchEnd);
     } else {
       window.removeEventListener('mousemove', handleCanvasPanMove);
       window.removeEventListener('mouseup', handleCanvasPanEnd);
+      window.removeEventListener('touchmove', handleCanvasTouchMove);
+      window.removeEventListener('touchend', handleCanvasTouchEnd);
     }
 
     if (draggedCard) {
       window.addEventListener('mousemove', handleCardMouseMove, passiveOptions as any);
       window.addEventListener('mouseup', handleCardMouseUp);
+      window.addEventListener('touchmove', handleCardTouchMove, passiveOptions as any);
+      window.addEventListener('touchend', handleCardTouchEnd);
     } else {
       window.removeEventListener('mousemove', handleCardMouseMove);
       window.removeEventListener('mouseup', handleCardMouseUp);
+      window.removeEventListener('touchmove', handleCardTouchMove);
+      window.removeEventListener('touchend', handleCardTouchEnd);
     }
 
     return () => {
       window.removeEventListener('mousemove', handleResizeMove);
       window.removeEventListener('mouseup', handleResizeEnd);
+      window.removeEventListener('touchmove', handleResizeTouchMove);
+      window.removeEventListener('touchend', handleResizeTouchEnd);
       window.removeEventListener('mousemove', handleCanvasPanMove);
       window.removeEventListener('mouseup', handleCanvasPanEnd);
+      window.removeEventListener('touchmove', handleCanvasTouchMove);
+      window.removeEventListener('touchend', handleCanvasTouchEnd);
       window.removeEventListener('mousemove', handleCardMouseMove);
       window.removeEventListener('mouseup', handleCardMouseUp);
+      window.removeEventListener('touchmove', handleCardTouchMove);
+      window.removeEventListener('touchend', handleCardTouchEnd);
     };
   }, [resizingCard, isPanning, draggedCard]);
 
@@ -1456,18 +1708,31 @@ export default function CanvasDetailPage() {
 
   if (!canvas || canvasOffset === null) {
     return (
-      <div className="flex h-screen overflow-hidden">
-        {/* Sidebar - Stays active during loading */}
-        <aside className={`transition-all duration-300 ${isSidebarCollapsed ? 'w-0' : 'w-[280px]'}`}>
-          <div className={`transition-all duration-300 ${isSidebarCollapsed ? 'opacity-0 -translate-x-full' : 'opacity-100 translate-x-0'}`}>
-            <Sidebar
-              activeConversationId={activeConversationId}
-              onSelectConversation={handleSelectConversation}
-              onNewChat={handleNewChat}
-              onToggleCollapse={toggleSidebar}
-              isCollapsed={isSidebarCollapsed}
-            />
-          </div>
+      <div className="flex h-screen overflow-hidden relative">
+        {/* Backdrop overlay for mobile when sidebar is open */}
+        {!isSidebarCollapsed && (
+          <div
+            className="fixed inset-0 bg-black/50 z-40 md:hidden"
+            onClick={toggleSidebar}
+          />
+        )}
+
+        {/* Sidebar - Overlay on mobile, beside content on larger screens */}
+        <aside className={`
+          fixed md:relative
+          inset-y-0 left-0
+          z-50 md:z-auto
+          w-[280px]
+          transition-transform duration-300 ease-in-out md:transition-all
+          ${isSidebarCollapsed ? '-translate-x-full md:translate-x-0 md:w-0' : 'translate-x-0 md:w-[280px]'}
+        `}>
+          <Sidebar
+            activeConversationId={activeConversationId}
+            onSelectConversation={handleSelectConversation}
+            onNewChat={handleNewChat}
+            onToggleCollapse={toggleSidebar}
+            isCollapsed={isSidebarCollapsed}
+          />
         </aside>
 
         {/* Canvas Loading Skeleton - Only right side */}
@@ -1483,10 +1748,24 @@ export default function CanvasDetailPage() {
   return (
     <ProtectedLayout>
       <TooltipProvider delayDuration={1000}>
-        <div className="flex h-screen overflow-hidden">
-        {/* Sidebar */}
-        <aside className={`transition-all duration-300 ${isSidebarCollapsed ? 'w-0' : 'w-[280px]'}`}>
-        <div className={`transition-all duration-300 ${isSidebarCollapsed ? 'opacity-0 -translate-x-full' : 'opacity-100 translate-x-0'}`}>
+        <div className="flex h-screen overflow-hidden relative">
+        {/* Backdrop overlay for mobile when sidebar is open */}
+        {!isSidebarCollapsed && (
+          <div
+            className="fixed inset-0 bg-black/50 z-40 md:hidden"
+            onClick={toggleSidebar}
+          />
+        )}
+
+        {/* Sidebar - Overlay on mobile, beside content on larger screens */}
+        <aside className={`
+          fixed md:relative
+          inset-y-0 left-0
+          z-50 md:z-auto
+          w-[280px]
+          transition-transform duration-300 ease-in-out md:transition-all
+          ${isSidebarCollapsed ? '-translate-x-full md:translate-x-0 md:w-0' : 'translate-x-0 md:w-[280px]'}
+        `}>
           <Sidebar
             activeConversationId={activeConversationId}
             onSelectConversation={handleSelectConversation}
@@ -1494,8 +1773,7 @@ export default function CanvasDetailPage() {
             onToggleCollapse={toggleSidebar}
             isCollapsed={isSidebarCollapsed}
           />
-        </div>
-      </aside>
+        </aside>
 
       <div className="relative h-screen flex-1 overflow-hidden bg-background">
         {/* Dotted Grid Background - Optimized for performance */}
@@ -1538,12 +1816,13 @@ export default function CanvasDetailPage() {
           onDrop={handleDrop}
           style={{
             cursor: isPanning ? 'grabbing' : 'grab',
-            touchAction: 'none'
+            touchAction: 'pan-x pan-y pinch-zoom'
           }}
         >
           <div
             data-canvas-area
             onMouseDown={handleCanvasPanStart}
+            onTouchStart={handleCanvasTouchStart}
             onClick={() => {
               if (selectedCardId || editingCardId) {
                 console.log('Canvas clicked - clearing selection');
@@ -1575,12 +1854,14 @@ export default function CanvasDetailPage() {
               hoveredCard={hoveredCard}
               isOnTop={topCardId === card._id}
               onMouseDown={handleCardMouseDown}
+              onTouchStart={handleCardTouchStart}
               onCardClick={(e) => e.stopPropagation()}
               onMouseEnter={handleCardMouseEnter}
               onMouseLeave={handleCardMouseLeave}
               onContentChange={handleContentChange}
               onEscapePress={handleEscapePress}
               onResizeStart={handleResizeStart}
+              onResizeTouchStart={handleResizeTouchStart}
               cardTextareaRef={handleCardTextareaRef}
               conversationContext={card.conversationHistory || []}
               model={selectedModel.value}
@@ -1608,9 +1889,9 @@ export default function CanvasDetailPage() {
           ))}
 
           {/* Connection Lines */}
-          {connections && (
+          {localConnections && localConnections.length > 0 && (
             <CanvasConnections
-              connections={connections}
+              connections={localConnections}
               cards={localCards}
               zoom={canvasZoom}
               offset={canvasOffset}
@@ -1633,9 +1914,39 @@ export default function CanvasDetailPage() {
             </Button>
           </div>
 
-          {/* Zoom Controls */}
-          <div className="absolute bottom-20 right-6 flex flex-col gap-2 z-30">
-            {/* Add New Card Button */}
+          {/* Zoom Controls - Top Left */}
+          <div className={`absolute top-20 z-30 flex lg:flex-col flex-row gap-2 transition-all ${isSidebarCollapsed ? 'left-4' : 'left-4'}`}>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleZoomOut}
+              className="h-10 w-10 bg-card shadow-lg lg:order-3 order-1"
+              title="Zoom out (Ctrl + Scroll)"
+            >
+              <span className="text-lg">−</span>
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleResetView}
+              className="h-10 w-10 bg-card shadow-lg text-xs lg:order-2 order-2"
+              title="Reset view"
+            >
+              {Math.round(canvasZoom * 100)}%
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleZoomIn}
+              className="h-10 w-10 bg-card shadow-lg lg:order-1 order-3"
+              title="Zoom in (Ctrl + Scroll)"
+            >
+              <span className="text-lg">+</span>
+            </Button>
+          </div>
+
+          {/* Add New Card Button - Bottom Right */}
+          <div className="absolute bottom-20 right-6 z-30">
             <Button
               variant="outline"
               size="icon"
@@ -1646,34 +1957,6 @@ export default function CanvasDetailPage() {
               title="Drag to create new card"
             >
               <SquarePlus className="h-5 w-5" />
-            </Button>
-
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={handleZoomIn}
-              className="h-10 w-10 bg-card shadow-lg"
-              title="Zoom in (Ctrl + Scroll)"
-            >
-              <span className="text-lg">+</span>
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={handleResetView}
-              className="h-10 w-10 bg-card shadow-lg text-xs"
-              title="Reset view"
-            >
-              {Math.round(canvasZoom * 100)}%
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={handleZoomOut}
-              className="h-10 w-10 bg-card shadow-lg"
-              title="Zoom out (Ctrl + Scroll)"
-            >
-              <span className="text-lg">−</span>
             </Button>
           </div>
         </div>

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Noticia_Text, Merriweather } from "next/font/google";
 import "./globals.css";
 import ConvexClientProvider from "./ConvexClientProvider";
@@ -22,6 +22,12 @@ export const metadata: Metadata = {
   description: "AI-powered chat interface",
 };
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -31,7 +37,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${noticiaText.className} ${merriweather.variable}`}>
         <PostHogProvider>
-          <ThemeProvider defaultTheme="dark" storageKey="chat-app-theme">
+          <ThemeProvider defaultTheme="system" storageKey="chat-app-theme">
             <ConvexClientProvider>{children}</ConvexClientProvider>
             <Toaster position="top-center" richColors />
           </ThemeProvider>

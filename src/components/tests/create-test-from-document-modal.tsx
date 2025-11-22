@@ -116,16 +116,25 @@ export function CreateTestFromDocumentModal({
       return;
     }
 
-    setIsGenerating(true);
-    setError(null);
+    // Close modal immediately and reset state
+    const filesToUpload = [...selectedFiles];
+    const format = testFormat;
+    const count = questionCount;
 
+    setSelectedFiles([]);
+    setTestFormat("multiple_choice");
+    setQuestionCount(10);
+    setError(null);
+    onClose();
+
+    // Start generation in background
     try {
       const formData = new FormData();
-      selectedFiles.forEach((file) => {
+      filesToUpload.forEach((file) => {
         formData.append("files", file);
       });
-      formData.append("testFormat", testFormat);
-      formData.append("questionCount", questionCount.toString());
+      formData.append("testFormat", format);
+      formData.append("questionCount", count.toString());
 
       const response = await fetch("/api/generate-test-from-document", {
         method: "POST",
@@ -139,19 +148,10 @@ export function CreateTestFromDocumentModal({
       }
 
       const data = await response.json();
-      // Test is now generating in background
       onTestCreated(data.testId);
-
-      // Reset and close immediately
-      setSelectedFiles([]);
-      setTestFormat("multiple_choice");
-      setQuestionCount(10);
-      setError(null);
-      setIsGenerating(false);
-      onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to generate test");
-      setIsGenerating(false);
+      console.error("Test generation failed:", err);
+      // Error handling could show a toast notification here
     }
   };
 
