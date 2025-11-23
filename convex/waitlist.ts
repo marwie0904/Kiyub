@@ -10,6 +10,9 @@ export const joinWaitlist = mutation({
     email: v.string(),
     gradeLevel: v.optional(v.string()),
     interestedFeature: v.optional(v.string()),
+    joinBetaTest: v.optional(v.boolean()),
+    operatingSystem: v.optional(v.string()),
+    mostUsedAiApp: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const now = Date.now();
@@ -29,6 +32,9 @@ export const joinWaitlist = mutation({
       email: args.email,
       gradeLevel: args.gradeLevel,
       interestedFeature: args.interestedFeature,
+      joinBetaTest: args.joinBetaTest,
+      operatingSystem: args.operatingSystem,
+      mostUsedAiApp: args.mostUsedAiApp,
       createdAt: now,
     });
 

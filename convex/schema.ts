@@ -356,6 +356,11 @@ export default defineSchema({
     gradeLevel: v.optional(v.string()),
     interestedFeature: v.optional(v.string()),
 
+    // Beta test fields
+    joinBetaTest: v.optional(v.boolean()),
+    operatingSystem: v.optional(v.string()),
+    mostUsedAiApp: v.optional(v.string()),
+
     createdAt: v.number(),
   })
     .index("by_email", ["email"])

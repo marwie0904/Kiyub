@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -36,6 +37,9 @@ export default function WaitlistPage() {
     email: "",
     gradeLevel: "",
     interestedFeature: "",
+    joinBetaTest: false,
+    operatingSystem: "",
+    mostUsedAiApp: "",
   });
 
   const joinWaitlist = useMutation(api.waitlist.joinWaitlist);
@@ -54,6 +58,9 @@ export default function WaitlistPage() {
         email: formData.email,
         gradeLevel: formData.gradeLevel || undefined,
         interestedFeature: formData.interestedFeature || undefined,
+        joinBetaTest: formData.joinBetaTest || undefined,
+        operatingSystem: formData.operatingSystem || undefined,
+        mostUsedAiApp: formData.mostUsedAiApp || undefined,
       });
 
       setShowSignupModal(false);
@@ -63,6 +70,9 @@ export default function WaitlistPage() {
         email: "",
         gradeLevel: "",
         interestedFeature: "",
+        joinBetaTest: false,
+        operatingSystem: "",
+        mostUsedAiApp: "",
       });
     } catch (error) {
       console.error("Error joining waitlist:", error);
@@ -118,9 +128,19 @@ export default function WaitlistPage() {
             initial={{ opacity: 0, scale: 0.5 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="pt-8 md:pt-12 pb-8 md:pb-12"
+            className="pt-8 md:pt-12 pb-4 md:pb-6"
           >
             <CubeLoader size="lg" variant="primary" speed="normal" />
+          </motion.div>
+
+          {/* Coming Soon */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.8, delay: 0.3 }}
+            className="text-xs text-muted-foreground mb-8"
+          >
+            Coming Soon
           </motion.div>
 
           {/* Headline */}
@@ -182,16 +202,6 @@ export default function WaitlistPage() {
               <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
               <span>Affordable & Accurate</span>
             </div>
-          </motion.div>
-
-          {/* Coming Soon */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.8, delay: 1.2 }}
-            className="text-xs text-muted-foreground"
-          >
-            Coming Soon
           </motion.div>
         </motion.div>
       </div>
@@ -326,6 +336,98 @@ export default function WaitlistPage() {
                   </SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="space-y-3 pt-2">
+              <div className="flex items-start space-x-2">
+                <Checkbox
+                  id="joinBetaTest"
+                  checked={formData.joinBetaTest}
+                  onCheckedChange={(checked) =>
+                    setFormData({ ...formData, joinBetaTest: checked as boolean })
+                  }
+                />
+                <div className="grid gap-1.5 leading-none">
+                  <Label
+                    htmlFor="joinBetaTest"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                  >
+                    Would you like to join the beta test?
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    You will be given free credits, and a free month on launch. Beta testers are selected at random and you will be notified via email.
+                  </p>
+                </div>
+              </div>
+
+              {formData.joinBetaTest && (
+                <div className="space-y-4 pl-6 pt-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="operatingSystem">
+                      Operating System <span className="text-destructive">*</span>
+                    </Label>
+                    <Select
+                      value={formData.operatingSystem}
+                      onValueChange={(value) =>
+                        setFormData({ ...formData, operatingSystem: value })
+                      }
+                      required={formData.joinBetaTest}
+                    >
+                      <SelectTrigger id="operatingSystem">
+                        <SelectValue placeholder="Select your OS" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Android">Android</SelectItem>
+                        <SelectItem value="iOS">iOS</SelectItem>
+                        <SelectItem value="Windows">Windows</SelectItem>
+                        <SelectItem value="Mac">Mac</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="mostUsedAiApp">
+                      Most Used AI App <span className="text-destructive">*</span>
+                    </Label>
+                    <Select
+                      value={formData.mostUsedAiApp}
+                      onValueChange={(value) =>
+                        setFormData({ ...formData, mostUsedAiApp: value })
+                      }
+                      required={formData.joinBetaTest}
+                    >
+                      <SelectTrigger id="mostUsedAiApp">
+                        <SelectValue placeholder="Select AI app" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ChatGPT">ChatGPT</SelectItem>
+                        <SelectItem value="Claude">Claude</SelectItem>
+                        <SelectItem value="Gemini">Gemini</SelectItem>
+                        <SelectItem value="Other">Other (please specify)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {formData.mostUsedAiApp === "Other" && (
+                    <div className="space-y-2">
+                      <Label htmlFor="otherAiApp">
+                        Please specify <span className="text-destructive">*</span>
+                      </Label>
+                      <Input
+                        id="otherAiApp"
+                        required
+                        placeholder="Enter AI app name"
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            mostUsedAiApp: e.target.value
+                          })
+                        }
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <Button
