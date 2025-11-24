@@ -18,8 +18,11 @@ export const merriweather = Merriweather({
 });
 
 export const metadata: Metadata = {
-  title: "AI Chat",
+  title: "aipanghighesthonors",
   description: "AI-powered chat interface",
+  icons: {
+    icon: '/favicon.svg',
+  },
 };
 
 export const viewport: Viewport = {
