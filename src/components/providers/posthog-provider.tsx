@@ -10,6 +10,11 @@ function PostHogPageView() {
   const searchParams = useSearchParams()
 
   useEffect(() => {
+    // Don't track pageviews on waitlist page
+    if (pathname === '/waitlist') {
+      return
+    }
+
     if (pathname && posthog) {
       let url = window.origin + pathname
       if (searchParams && searchParams.toString()) {
@@ -25,9 +30,20 @@ function PostHogPageView() {
 }
 
 export function PostHogProvider({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname()
+
   useEffect(() => {
+    // Don't initialize PostHog on waitlist page
+    if (pathname === '/waitlist') {
+      return
+    }
     initPostHog()
-  }, [])
+  }, [pathname])
+
+  // On waitlist page, just render children without PostHog
+  if (pathname === '/waitlist') {
+    return <>{children}</>
+  }
 
   return (
     <>
