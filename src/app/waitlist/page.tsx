@@ -4,6 +4,7 @@ import { CubeLoader } from "@/components/ui/cube-loader";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { useState } from "react";
+import { toast } from "sonner";
 import Image from "next/image";
 import {
   Dialog,
@@ -73,6 +74,11 @@ export default function WaitlistPage() {
       });
     } catch (error) {
       console.error("Error joining waitlist:", error);
+      // Show error message to user
+      const errorMessage = error instanceof Error
+        ? error.message
+        : "Failed to join waitlist. Please try again.";
+      toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
